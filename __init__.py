@@ -1,0 +1,1 @@
+from .GetZHTable import extarct_zh_table
