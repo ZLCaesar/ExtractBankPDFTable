@@ -1,5 +1,7 @@
+from re import I
 import numpy as np
 import pandas as pd
+from .deal_row_boundry import get_bound_by_flag, get_table_boundary, find_proper_rows
 
 class ExtractTableWithLessLine:
     """抽取只有上下少数边界的表格
@@ -261,7 +263,7 @@ class ExtractTableWithLessLine:
             return None, None
         
 class ExtractTableWithNoVertical:
-    def __init__(self, CURVES_MIN_MARGIN=8, MAX_SPACE_HEIGHT=40):
+    def __init__(self, CURVES_MIN_MARGIN=8, MAX_SPACE_HEIGHT=40, CELL_HEIGHT=25):
         """抽取表格，适用于没有竖线的表格
 
         Args:
@@ -270,7 +272,7 @@ class ExtractTableWithNoVertical:
         """
         self.CURVES_MIN_MARGIN = CURVES_MIN_MARGIN
         self.MAX_SPACE_HEIGHT = MAX_SPACE_HEIGHT
-
+        self.CELL_HEIGHT = CELL_HEIGHT
     def get_page_words(self, page):
         """
         转换每个字符的y坐标
@@ -331,6 +333,7 @@ class ExtractTableWithNoVertical:
                 before_set = x_set
                 
         return table_id_list
+        
     def drop_duplicate_cols(self, table):
         i = 0
         while i < len(table.columns)-1:
@@ -401,7 +404,7 @@ class ExtractTableWithNoVertical:
         if page.curves:
             for i in range(len(page.curves)):
                 for item in page.curves[i]['pts']:
-                    if y_range and (y_range[1]>item[1] or item[1]>y_range[0]):
+                    if y_range and (y_range[-1]>item[1] or item[1]>y_range[0]):
                         continue
                     if not x_split:
                         x_split.add(item[0])
@@ -420,9 +423,9 @@ class ExtractTableWithNoVertical:
                         
         else:         
             for item in page.vertical_edges:
-                if y_range and (y_range[1]>item['y0'] or item['y0']>y_range[0]):
+                if y_range and (y_range[-1]>item['y0'] or item['y0']>y_range[0]):
                     continue
-                if y_range and (y_range[1]>item['y1'] or item['y1']>y_range[0]):
+                if y_range and (y_range[-1]>item['y1'] or item['y1']>y_range[0]):
                     continue
                 if not x_split:
                     x_split.add(item['x0'])
@@ -529,25 +532,40 @@ class ExtractTableWithNoVertical:
         if not words_list:
             words_list = self.get_page_words(page)
         y_split = self.get_table_y(page)
-        table_boundary = self.get_table_boundary(y_split)
-        
+        upbound, bottombound = get_bound_by_flag(words_list)
+        table_boundary = get_table_boundary(y_split, upbound, bottombound)
+
+        for table_id in table_boundary:
+            memory = {}
+            temp = table_boundary.get(table_id)
+            for i in range(len(temp)-1):
+                if float(temp[i])-float(temp[i+1])>28:
+                    memory[i] = find_proper_rows(temp[i], temp[i+1], words_list)
+                    
+            memory = sorted(memory.items(), key=lambda x:x[0], reverse=True)
+            while memory:
+                i,item = memory.pop(0)
+
+                temp = temp[:i+1]+item+temp[i+1:]
+            table_boundary[table_id] = temp
+
         for table_id in table_boundary:
             boundary = table_boundary[table_id]
             x_range = self.get_table_x(page, boundary)
-            ys = [sorted(y_split, reverse=True)[i] for i in range(boundary[2], boundary[3]+1)]
+            ys = boundary
             xs = sorted(x_range)
-            ys = [ys[0]+25]+ys
+            # ys = [ys[0]+self.CELL_HEIGHT]+ys
             ys[-1] = ys[-1]-2
             cell_dict, cell_words_idlist = self.fill_content_into_cell(xs, ys, words_list)
             if cell_words_idlist:
                 text_words_list += cell_words_idlist
-            if cell_dict is not None and len(cell_dict)>3:
+            if cell_dict is not None and len(cell_dict)>2:
                 ret_list.append(cell_dict)
         
         # text_words_list = [words_list[i] for i in range(len(words_list)) if i not in text_words_list]
         return ret_list
 
-    def get_words_from_pymupdf(self, page, max_adjacent_dis=3):
+    def get_words_from_pymupdf(self, page, max_adjacent_dis=5):
 #     page = pdf.loadPage(page_id)
         words = page.getTextWords()
         words_list = []
