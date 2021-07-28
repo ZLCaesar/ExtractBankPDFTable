@@ -3,6 +3,7 @@
 ## 使用方法
 
 from ExtractBankPDFTable import extarct_zh_table
+
 table_dicts = extarct_zh_table('xxxx.pdf')
 
 ## 返回
