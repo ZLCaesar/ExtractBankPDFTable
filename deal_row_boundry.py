@@ -37,7 +37,7 @@ def get_bound_by_flag(words_list):
             
         for pattern in start_from_this:
             if re.findall(pattern, text):
-                upbound.append(top+5)
+                upbound.append(top+4)
                 find2 = True
                 break
         if find2:

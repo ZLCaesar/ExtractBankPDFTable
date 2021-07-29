@@ -4,6 +4,10 @@ import pandas as pd
 from .toolkit import UnitRec
 from .deal_row_boundry import get_bound_by_flag, get_table_boundary, find_proper_rows
 
+class ExtractTable(object):
+    def __init__():
+        pass
+
 class ExtractTableWithNoVertical:
     def __init__(
         self, 
@@ -116,6 +120,10 @@ class ExtractTableWithNoVertical:
                 i = 0
             else:
                 i += 1
+        for i, row in table.iterrows():
+            if (row.isnull().all()):
+                table = table.drop(i)
+        table = table.reset_index(drop=True)
         return table
 
     def get_table_y(self, page):
