@@ -57,16 +57,38 @@ def get_table_boundary(y_split, upbound, bottombound):
     """
     一个页面可能有多个表格，根据纵坐标判断分了几个表格
     """
-
+    # def reshape_yseq(y):
+    #     for item in y:
+    def change(a1, a2):
+        if a1[1] == 'UP' or a1[1] == 'DOWN':
+            a2[1] = a1[1]
+            return a2, 0    #保留后者，删除当前
+        elif a2[1] == 'UP' or a2[1] == 'DOWN':
+            a1[1] = a2[1]
+            return a1, 1    #保留当前，删除后者
+        else:
+            return None, -1
+        
+    def reshape_yseq(y):
+        i = 0
+        while i<len(y)-1:           
+            if abs(float(y[i][0])-float(y[i+1][0]))<5:
+                value, pos = change(y[i], y[i+1])
+                if pos!=-1:
+                    y.pop(i+pos)
+                    i = i+pos
+                    continue
+            
+            i += 1
     table_id = 0
     table_boundary = {}
     if len(y_split)<2:
         return {}
     y = sorted(y_split, reverse=True)
-    y = [(item, None) for item in y]
-    flags = [(item, 'UP') for item in upbound]
+    y = [[item, None] for item in y]
+    flags = [[item, 'UP'] for item in upbound]
     if not upbound:
-        flags += [(item, 'DOWN') for item in bottombound]  
+        flags += [[item, 'DOWN'] for item in bottombound]  
     flag = -1
     while flags:
         flag = flags.pop(0)
@@ -79,7 +101,7 @@ def get_table_boundary(y_split, upbound, bottombound):
                 continue
     if flag != -1:
         y.append(flag)
-
+    reshape_yseq(y)
     temp = []
     for i in range(0, len(y)):
         if y[i][1] == 'UP':
@@ -98,8 +120,6 @@ def get_table_boundary(y_split, upbound, bottombound):
     if temp:
         table_boundary[table_id] = temp
         
-    
-
     return table_boundary
 
 def find_proper_rows(top, bottom, words_list):

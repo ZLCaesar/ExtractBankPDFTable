@@ -1,7 +1,7 @@
 import locale
 from tqdm import tqdm
 from .DetectMainTable import ThreeBTable
-from .ExtractTable import ExtractTableWithLessLine
+from extract_table.ExtractTable import ExtractTableWithLessLine
 from .FindIndex import find_recent_year_column, get_index
 
 class ExtractIndex:
