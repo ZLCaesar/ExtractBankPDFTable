@@ -22,7 +22,7 @@ def extarct_zh_table(pdf_file_path):
             words_list[i]['x1'] = words_list[i]['x1'] - 1
         words_list = sorted(words_list, key=lambda x:x['top'], reverse=True)
         tables = etwnv.get_table_by_page(page, words_list)
-        tables = [{'data': etwnv.drop_duplicate_cols(t), 'unit':1, 'page':pid} for t in tables]
+        tables = [{'data': etwnv.drop_duplicate_cols(t['data']), 'unit':t['unit'], 'page':pid} for t in tables]
         
         ret_tables += tables
 

@@ -29,7 +29,7 @@ def get_bound_by_flag(words_list):
         
         for pattern in under_this:
             if re.findall(pattern, text):
-                upbound.append(bottom-5)
+                upbound.append(bottom-4)
                 find1 = True
                 break
         if find1:
@@ -90,7 +90,7 @@ def get_table_boundary(y_split, upbound, bottombound):
         
         elif y[i][1] is None:
             temp.append(y[i][0])
-        else:
+        else:                         #DOWN
             temp.append(y[i][0])
             table_boundary[table_id] = temp
             temp = []
