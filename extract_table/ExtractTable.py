@@ -27,7 +27,7 @@ class ExtractTable(object):
             if all(temp):
                 return True
             return False
-            
+
         i = 0
         while i < len(table.columns)-1:
             curr_col = list(table[i])
@@ -95,6 +95,6 @@ class ExtractTable(object):
         words_list = sorted(words_list, key=lambda x:x['top'], reverse=True)
         
         return words_list
-
+        
     def get_table_by_page(self):
         raise NotImplementedError

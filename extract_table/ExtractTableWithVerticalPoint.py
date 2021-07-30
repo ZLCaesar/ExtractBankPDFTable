@@ -198,7 +198,7 @@ class ExtractTableWithVerticalPoint(ExtractTable):
                     "unit": 该表格对应的单位
                     "page": 该表所在页
         """
-        ret_list = []
+        table_list = []
         if not words_list:
             words_list = self.get_page_words(page)
         y_split = self.get_table_y(page)
@@ -209,7 +209,7 @@ class ExtractTableWithVerticalPoint(ExtractTable):
             memory = {}
             temp = table_boundary.get(table_id)
             for i in range(len(temp)-1):
-                if float(temp[i])-float(temp[i+1])>self.MORE_THAN_ONE_CELL_HEIGHT:
+                if float(temp[i])-float(temp[i+1])>self.MORE_THAN_ONE_CELL_HEIGHT:  #如果距离超过阈值，则认为可能存在多行，进入findproperrows函数进行拆分
                     memory[i] = find_proper_rows(temp[i], temp[i+1], words_list)
                     
             memory = sorted(memory.items(), key=lambda x:x[0], reverse=True)
@@ -225,10 +225,11 @@ class ExtractTableWithVerticalPoint(ExtractTable):
             ys = boundary
             xs = sorted(x_range)
             # ys = [ys[0]+self.CELL_HEIGHT]+ys
+
             ys[-1] = ys[-1]-2
             cell_dict, unit = self.fill_content_into_cell(xs, ys, words_list)
             
             if cell_dict is not None and len(cell_dict)>2:
-                ret_list.append({'data': cell_dict, 'unit': unit})
-        
-        return ret_list
+                table_list.append({'data': cell_dict, 'unit': unit})
+
+        return table_list
