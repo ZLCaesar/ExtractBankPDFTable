@@ -4,7 +4,12 @@
 
 from ExtractBankPDFTable import extarct_zh_table
 
-table_dicts = extarct_zh_table('xxxx.pdf')
+ret_list = extarct_zh_table('xxxx.pdf', index_list)
 
 ## 返回
-table_dicts是个字典，key是页码，value是个list，即如果该页面有多个表，以list的形式返回，表以pandas.DataFrame形式保存。
+ret_list是个list，里面的元素是dict：
+- 'year':'2020',
+- 'quarter':'Q2',
+- 'bank':'招商银行',
+- 'table':[{'data': dataframe,'unit':1}{}],
+- 'textQuota': {'quota1':, 'quota2':}
