@@ -3,9 +3,10 @@ import pdfplumber
 from tqdm import tqdm
 from package.extract_table.ExtractTableWithVerticalPoint import ExtractTableWithVerticalPoint
 from package.toolkit.ExtractIndexFromContent import extract_index_from_content, extract_file_name
-
+from package.toolkit import UnitRec
 
 def extract_index_from_text(index_list, text_list):
+    ur = UnitRec()
     index_dict = {item: None for item in index_list}
 
     for text in text_list:
@@ -15,7 +16,8 @@ def extract_index_from_text(index_list, text_list):
         for item in temp_index_dict:
             index_dict[item] = temp_index_dict[item]
             index_list = [key for key in index_dict if index_dict[key] is None]
-
+            # covert_text_num
+    index_dict = {item: ur.covert_text_num(index_dict.get(item)) for item in index_dict}
     return index_dict
 
 # def extract_index_from_text(index_list, text_list):

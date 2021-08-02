@@ -1,4 +1,5 @@
 import re
+import locale
 
 class UnitRec:
     def __init__(self):
@@ -26,3 +27,22 @@ class UnitRec:
                     return finds[0], self.units[finds[0]]
 
         return None, 1
+
+    def convert_num(self, num):
+        try:
+            num = num.replace('(','').replace(')','').replace('（','').replace('）','')
+            locale.setlocale( locale.LC_ALL, 'en_US.UTF-8' )
+            return locale.atof(num)
+        except:
+            return None
+
+    def covert_text_num(self, text):
+        if not text:
+            return None
+        if "%" in text:
+            return text.replace("%", "")
+        for item in self.units:
+            u = item.replace("元", "")
+            if u in text:
+                return self.convert_num(text.replace(u, ""))*self.units[item]
+        return None
