@@ -83,3 +83,92 @@ def get_table_boundary(y_split, max_space_height=None):
         table_boundary[table_id] = [y[begin]+1, y[end+1]-1, begin, end+1]
         
     return table_boundary
+
+def valid(self, xs, ys):
+    """xs和ys是根据字典value(list)的元素个数进行降序排序之后得到的list。
+    xs[0][0]就是在某个水平线上，拥有分割点最多的ym，则其很有可能是上下边界
+    然后再去遍历ys中每个元素的第1项，即[y1, y2, ..., yn]，如果有ym～=yn，则认为找到了基准线
+
+    Args:
+        xs (list): [(y1, [x11, x12, ..., x1n]), (y2, [x21, x22, ..., x2n])]
+        ys (list): [(x1, [y11, y12, ..., y1n]), (x2, [y21, y22, ..., y2n])]
+
+    Returns:
+        int: -1表示未找到，否则返回ys的索引
+    """
+    if len(xs)>0:
+        most_x_line = xs[0][0]
+    else:
+        return -1
+    for i in range(len(ys)):
+        y = ys[i][1]
+        exist_flag = False
+        for _y in y:
+            if abs(_y-most_x_line)<1:
+                exist_flag = True
+        if exist_flag:
+            return i
+        
+    return -1
+        
+def find_first_last_line(self, horizontal_edges):
+    """根据水平边界线，找到上下界。
+    因为只有水平线，且没有明显的间隔断点用于明确列间隔，因此只能通过启发式规则确定表的上下边界。其基本思想为，隶属于同一张表
+
+    Args:
+        horizontal_edges (dict): 水平线，包含起始点的xy坐标
+
+    Returns:
+        Float: 上下边界
+    """
+    def iter_dict(k, v, dic):
+        """循环更新生成字典。
+        以key为x坐标，value为y坐标为例。
+        key为x坐标，value为共享
+
+        Args:
+            k ([type]): [description]
+            v ([type]): [description]
+            dic ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
+        if k in dic:
+            temp = dic.get(k)
+            temp.append(v)
+            dic[k] = temp
+        else:
+            exist = False
+            for k_ in dic:
+                if abs(k_-k)<1:
+                    temp = dic.get(k_)
+                    temp.append(v)
+                    dic[k_] = temp
+                    exist = True
+                    break
+            if not exist:
+                dic[k] = [v]
+        return dic
+
+    he_dict = {}
+    ve_dict = {}
+    for he in horizontal_edges:
+        x, y = he['x0'], he['y0']
+        ve_dict = iter_dict(y, x, ve_dict) #key为纵坐标，value为横坐标list
+        he_dict = iter_dict(x, y, he_dict) #key为横坐标，value为纵坐标list
+        
+    xs = sorted(ve_dict.items(), key=lambda x:len(x[1]), reverse=True)
+    ys = sorted(he_dict.items(), key=lambda x:len(x[1]), reverse=True)
+    flag = self.valid(xs, ys)
+    """
+    如果flag返回的不是-1，则根据索引找到了上下边界，否则，则返回分割点最多的list，即ys[0]
+    """
+    if flag != -1:
+        x, ys = ys[flag][0], ys[flag][1]
+    else:
+        x, ys = ys[0][0], ys[0][1]
+    ys = sorted(ys, reverse=True)
+    if len(ys)>1:
+        return x, ys[0], ys[-1]
+    return None, None, None

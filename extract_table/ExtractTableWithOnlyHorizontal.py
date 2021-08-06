@@ -1,92 +1,22 @@
+from re import U
 import pandas as pd
 
-class ExtractTableWithLessLine:
+from .BaseExtractTable import BaseExtractTable
+from package.deal_row_boundry import get_bound_by_flag, get_table_boundary, find_proper_rows
+
+class ExtractTableWithOnlyHorizontal(BaseExtractTable):
     """抽取只有上下少数边界的表格
     """
     def __init__(self):
+        super(ExtractTableWithOnlyHorizontal, self).__init__()
         self.MIN_TABLE_HEIGHT = 30
 
-    def valid(self, xs, ys):
-        if len(xs)>0:
-            most_x_line = xs[0][0]
-        else:
-            return -1
-        for i in range(len(ys)):
-            y = ys[i][1]
-            exist_flag = False
-            for _y in y:
-                if abs(_y-most_x_line)<1:
-                    exist_flag = True
-            if exist_flag:
-                return i
-            
-        return -1
-            
-    def find_first_last_line(self, horizontal_edges):
-        """根据水平边界线，找到上下界。
-        因为只有水平线，且没有明显的间隔断点用于明确列间隔，因此只能通过启发式规则确定表的上下边界。其基本思想为，隶属于同一张表
 
-        Args:
-            horizontal_edges (dict): 水平线，包含起始点的xy坐标
-
-        Returns:
-            Float: 上下边界
-        """
-        def iter_dict(k, v, dic):
-            """循环更新生成字典。
-            以key为x坐标，value为y坐标为例。
-            key为x坐标，value为共享
-
-            Args:
-                k ([type]): [description]
-                v ([type]): [description]
-                dic ([type]): [description]
-
-            Returns:
-                [type]: [description]
-            """
-            if k in dic:
-                temp = dic.get(k)
-                temp.append(v)
-                dic[k] = temp
-            else:
-                exist = False
-                for k_ in dic:
-                    if abs(k_-k)<1:
-                        temp = dic.get(k_)
-                        temp.append(v)
-                        dic[k_] = temp
-                        exist = True
-                        break
-                if not exist:
-                    dic[k] = [v]
-            return dic
-
-        he_dict = {}
-        ve_dict = {}
-        for he in horizontal_edges:
-            x, y = he['x0'], he['y0']
-            ve_dict = iter_dict(y, x, ve_dict)
-            he_dict = iter_dict(x, y, he_dict)
-            
-        xs = sorted(ve_dict.items(), key=lambda x:len(x[1]), reverse=True)
-        ys = sorted(he_dict.items(), key=lambda x:len(x[1]), reverse=True)
-        flag = self.valid(xs, ys)
-        if flag != -1:
-            x, ys = ys[flag][0], ys[flag][1]
-        else:
-            x, ys = ys[0][0], ys[0][1]
-        ys = sorted(ys, reverse=True)
-        if len(ys)>1:
-            return x, ys[0], ys[-1]
-        return None, None, None
-
-    def get_words_line(self, word_list, height, up, down):
+    def get_words_line(self, word_list, up, down):
         """根据给定的上下边界，找到可能的表格范围内的数据
 
         Args:
             word_list (dict): page内的所有文本片段
-            height (Float): page高度，用于计算y=height-top
             up (Float): 表格上边界
             dowun (Float): 表格下边界
 
@@ -94,28 +24,33 @@ class ExtractTableWithLessLine:
             dict: key是行高（y）,value是[字符串，开始x坐标，终止x坐标]
         """
         words_line = {}
+        unit_feat = None 
+        unit = 1
         for words in word_list:
-            y = height-words['top']
-            bottom = height-words['bottom']
+            y = words['top']
+            bottom = words['bottom']
+            if not unit_feat:
+                unit_feat, unit = self.unit_rec.extract_unit(words['text'])
+            
             if bottom-up>3 or y<down:
                 continue
             else:
-                if y in words_line:
-                    temp = words_line[y]
+                if bottom in words_line:
+                    temp = words_line[bottom]
                     temp.append([words['text'], words['x0'], words['x1']])
-                    words_line[y] = temp
+                    words_line[bottom] = temp
                 else:
                     exist = False
-                    for y_ in words_line:
-                        if abs(y-y_)<3:
-                            temp = words_line[y_]
+                    for bottom_ in words_line:
+                        if abs(bottom-bottom_)<5:
+                            temp = words_line[bottom_]
                             temp.append([words['text'], words['x0'], words['x1']])
-                            words_line[y_] = temp
+                            words_line[bottom_] = temp
                             exist = True
                     if not exist:
-                        words_line[y] = [[words['text'], words['x0'], words['x1']]]
+                        words_line[bottom] = [[words['text'], words['x0'], words['x1']]]
         
-        return words_line
+        return words_line, unit
 
     def judge(self, columns, x1, x2):
         """给定一个初始的列边界范围columns，然后根据给定的x1,x2不断修正边界
@@ -238,20 +173,50 @@ class ExtractTableWithLessLine:
                         data[i][j] = word[0]
         return pd.DataFrame(data)
 
-    def get_table(self, page, word_list=None, column_side=None, table_name=''):
-        """
-        接口，返回表格
-        """
-        try:
-            if not word_list:
-                word_list = page.extract_words()
-            _, up, dowun = self.find_first_last_line(page.horizontal_edges)
-            if abs(up-dowun)<self.MIN_TABLE_HEIGHT:
-                return None, None
-            words_line = self.get_words_line(word_list, page.height, up, dowun)
-            if not column_side:
-                column_side, merge_cols = self.split_cells(words_line)
-            return column_side, self.get_no_line_table(column_side, words_line)
-        except:
-            return None, None
+
+    # def get_table_by_page(self, page, word_list=None, column_side=None):
+    #     """
+    #     接口，返回表格
+    #     """
+    #     try:
+    #         if not word_list:
+    #             word_list = page.extract_words()
+    #         _, up, dowun = self.find_first_last_line(page.horizontal_edges)
+    #         if abs(up-dowun)<self.MIN_TABLE_HEIGHT:
+    #             return None, None
+    #         words_line = self.get_words_line(word_list, page.height, up, dowun)
+    #         if not column_side:
+    #             column_side, merge_cols = self.split_cells(words_line)
+    #         return column_side, self.get_no_line_table(column_side, words_line)
+    #     except:
+    #         return None, None
         
+    def get_table_by_page(self, page, under_this, start_from_this, above_this, words_list=None):
+        """根据page对象获取表格。
+        由于pdfplumber对部分年报（例如招商银行2020半年报）的文字无法抽取，需要借助pymupdf。因此如果传入的
+        words_list为空，则说明是来自于pdfplumber，如果不为空，则说明来自与pymupdf
+
+        Returns:
+            list: 返回的是一个list，里面的每个元素是一个字典:
+                    "data": 抽取的表格
+                    "unit": 该表格对应的单位
+                    "page": 该表所在页
+        """
+        table_list = []
+        if not words_list:
+            words_list = self.get_page_words(page)
+        y_split = self.get_table_y(page)
+        upbound, bottombound = get_bound_by_flag(words_list, under_this, start_from_this, above_this)
+        table_boundary = get_table_boundary(y_split, upbound, bottombound)
+
+        for table_id in table_boundary:
+            boundary = table_boundary[table_id]
+            up, dowun = float(boundary[0]), float(boundary[-1])
+            if abs(up-dowun)<self.MIN_TABLE_HEIGHT:
+                continue
+            words_line, unit = self.get_words_line(words_list, up, dowun)
+            column_side, merge_cols = self.split_cells(words_line)
+            table = self.get_no_line_table(column_side, words_line)
+            table_list.append({'data': table, 'unit': unit})
+        return table_list
+        # return table_list

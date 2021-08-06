@@ -1,10 +1,11 @@
 import re
 
-under_this = ['如下表所示', '明细如下', '情况如下', '单位.{0,2}人民币', '如下']
-start_from_this = ['\d{4}年']
-above_this = ['注:']
+# under_this = ['如下表所示', '明细如下', '情况如下', '单位.{0,2}人民币', '如下']
+# start_from_this = ['\d{4}年']
+# above_this = ['注:']
 
-def get_bound_by_flag(words_list):
+
+def get_bound_by_flag(words_list, under_this, start_from_this, above_this):
     def find_proper_line(bound):
         bound = sorted(bound, reverse=True)
         if len(bound)<2:
