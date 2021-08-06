@@ -3,9 +3,13 @@
 ## 使用方法
 
 from package import ExtractIndex
+
 pdf_file_path = '../data/宁波银行2020半年度报告.pdf'
+
 bank_name = '宁波银行'
+
 et = ExtractIndex(pdf_file_path, index_list, bank_name)
+
 result = et.extarct_table()
 
 pdf文件名命名规范为：
