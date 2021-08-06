@@ -50,7 +50,8 @@ class BaseExtractTable(object):
                 i = 0
             else:
                 i += 1
-        
+                
+        i = 0
         while i < len(table)-1:
             curr_row = list(table.iloc[i])
             next_row = list(table.iloc[i+1])

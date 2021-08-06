@@ -2,15 +2,19 @@ from re import U
 import pandas as pd
 
 from .BaseExtractTable import BaseExtractTable
-from package.deal_row_boundry import get_bound_by_flag, get_table_boundary, find_proper_rows
+from .DealRowBound import DealBoundary
 
 class ExtractTableWithOnlyHorizontal(BaseExtractTable):
     """抽取只有上下少数边界的表格
     """
-    def __init__(self):
+    def __init__(self,
+        UNDER_THIS = [],
+        START_FROM_THIS = [],
+        ABOVE_THIS = [],
+        BOUND_FLAG_DIS_TOLERANCE = 2):
         super(ExtractTableWithOnlyHorizontal, self).__init__()
         self.MIN_TABLE_HEIGHT = 30
-
+        self.deal_bound = DealBoundary(UNDER_THIS, START_FROM_THIS, ABOVE_THIS, BOUND_FLAG_DIS_TOLERANCE)
 
     def get_words_line(self, word_list, up, down):
         """根据给定的上下边界，找到可能的表格范围内的数据
@@ -191,7 +195,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
     #     except:
     #         return None, None
         
-    def get_table_by_page(self, page, under_this, start_from_this, above_this, words_list=None):
+    def get_table_by_page(self, page, words_list=None):
         """根据page对象获取表格。
         由于pdfplumber对部分年报（例如招商银行2020半年报）的文字无法抽取，需要借助pymupdf。因此如果传入的
         words_list为空，则说明是来自于pdfplumber，如果不为空，则说明来自与pymupdf
@@ -206,8 +210,8 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
         if not words_list:
             words_list = self.get_page_words(page)
         y_split = self.get_table_y(page)
-        upbound, bottombound = get_bound_by_flag(words_list, under_this, start_from_this, above_this)
-        table_boundary = get_table_boundary(y_split, upbound, bottombound)
+        upbound, bottombound = self.deal_bound.get_bound_by_flag(words_list)
+        table_boundary = self.deal_bound.get_table_boundary(y_split, upbound, bottombound)
 
         for table_id in table_boundary:
             boundary = table_boundary[table_id]

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from .BaseExtractTable import BaseExtractTable
-from package.deal_row_boundry import get_bound_by_flag, get_table_boundary, find_proper_rows
+from .DealRowBound import DealBoundary
 
 class ExtractTableWithVerticalPoint(BaseExtractTable):
     def __init__(
@@ -13,7 +13,11 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
         CELL_HEIGHT=25, 
         MORE_THAN_ONE_CELL_HEIGHT=28,
         UP_DEVIATION_TOLERANCE=0,
-        DOWN_DEVIATION_TOLERANCE=0
+        DOWN_DEVIATION_TOLERANCE=0,
+        UNDER_THIS = [],
+        START_FROM_THIS = [],
+        ABOVE_THIS = [],
+        BOUND_FLAG_DIS_TOLERANCE = 2
         ):
         """抽取表格，适用的表格形式：
                 1. 横竖线充足（约等于完美表格）
@@ -33,7 +37,8 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
         self.MORE_THAN_ONE_CELL_HEIGHT = MORE_THAN_ONE_CELL_HEIGHT
         self.UP_DEVIATION_TOLERANCE = UP_DEVIATION_TOLERANCE
         self.DOWN_DEVIATION_TOLERANCE = DOWN_DEVIATION_TOLERANCE
-        
+        self.deal_bound = DealBoundary(UNDER_THIS, START_FROM_THIS, ABOVE_THIS, BOUND_FLAG_DIS_TOLERANCE)
+
     def fill_content_into_cell(self, xs, ys, words_list):
         """
         将解析的表格单元内容填入到对应的pd中，同时抽取该表对应的单位。
@@ -83,14 +88,17 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
                 continue
             for i in range(y_begin, min(y_end, len(ys)-1)):
                 for j in range(x_begin, min(x_end, len(xs)-1)):
-                    data[i][j] = words['text']
+                    if data[i][j] and data[i][j]!=words['text']:
+                        data[i][j] += words['text']
+                    else:
+                        data[i][j] = words['text']
 
         if all([not any(line) for line in data]):
             return None, None
             
         return pd.DataFrame(data), ret_unit
 
-    def get_table_by_page(self, page, under_this, start_from_this, above_this, words_list=None):
+    def get_table_by_page(self, page, words_list=None):
         """根据page对象获取表格。
         由于pdfplumber对部分年报（例如招商银行2020半年报）的文字无法抽取，需要借助pymupdf。因此如果传入的
         words_list为空，则说明是来自于pdfplumber，如果不为空，则说明来自与pymupdf
@@ -105,15 +113,15 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
         if not words_list:
             words_list = self.get_page_words(page)
         y_split = self.get_table_y(page)
-        upbound, bottombound = get_bound_by_flag(words_list, under_this, start_from_this, above_this)
-        table_boundary = get_table_boundary(y_split, upbound, bottombound)
+        upbound, bottombound = self.deal_bound.get_bound_by_flag(words_list)
+        table_boundary = self.deal_bound.get_table_boundary(y_split, upbound, bottombound)
 
         for table_id in table_boundary:
             memory = {}
             temp = table_boundary.get(table_id)
             for i in range(len(temp)-1):
                 if float(temp[i])-float(temp[i+1])>self.MORE_THAN_ONE_CELL_HEIGHT:  #如果距离超过阈值，则认为可能存在多行，进入findproperrows函数进行拆分
-                    memory[i] = find_proper_rows(temp[i], temp[i+1], words_list)
+                    memory[i] = self.deal_bound.find_proper_rows(temp[i], temp[i+1], words_list)
                     
             memory = sorted(memory.items(), key=lambda x:x[0], reverse=True)
             while memory:

@@ -44,7 +44,12 @@ class ExtractIndex:
         return index_dict
 
     def extarct_zh_table(self, UP_DEVIATION_TOLERANCE, DOWN_DEVIATION_TOLERANCE):
-        etwnv = ExtractTableWithVerticalPoint(UP_DEVIATION_TOLERANCE=UP_DEVIATION_TOLERANCE, DOWN_DEVIATION_TOLERANCE=DOWN_DEVIATION_TOLERANCE)
+        etwnv = ExtractTableWithVerticalPoint(UP_DEVIATION_TOLERANCE=UP_DEVIATION_TOLERANCE, 
+                                    DOWN_DEVIATION_TOLERANCE=DOWN_DEVIATION_TOLERANCE,
+                                    UNDER_THIS = self.args['under_this'],
+                                    START_FROM_THIS = self.args['start_from_this'],
+                                    ABOVE_THIS = self.args['above_this'],
+                                    BOUND_FLAG_DIS_TOLERANCE = self.args['bound_flag_dis_tolerance'])
         
         ret_tables = []
         text_list = []
@@ -57,7 +62,7 @@ class ExtractIndex:
             words_list = etwnv.get_page_words(page, page_mu)
             content = ''.join([item['text'] for item in words_list])
             text_list.append(content.replace(" ",""))
-            tables = etwnv.get_table_by_page(page, self.args['under_this'], self.args['start_from_this'], self.args['above_this'], words_list)
+            tables = etwnv.get_table_by_page(page, words_list)
             tables = [{'data': etwnv.drop_duplicate_cols(t['data']), 'unit':t['unit'], 'page':pid} for t in tables]
             
             ret_tables += tables
@@ -69,8 +74,14 @@ class ExtractIndex:
         return self.ret
 
     def extarct_nb_table(self):
-        etwnv = ExtractTableWithVerticalPoint()
-        etwon = ExtractTableWithOnlyHorizontal()
+        etwnv = ExtractTableWithVerticalPoint(UNDER_THIS = self.args['under_this'],
+                                    START_FROM_THIS = self.args['start_from_this'],
+                                    ABOVE_THIS = self.args['above_this'],
+                                    BOUND_FLAG_DIS_TOLERANCE = self.args['bound_flag_dis_tolerance'])
+        etwon = ExtractTableWithOnlyHorizontal(UNDER_THIS = self.args['under_this'],
+                                    START_FROM_THIS = self.args['start_from_this'],
+                                    ABOVE_THIS = self.args['above_this'],
+                                    BOUND_FLAG_DIS_TOLERANCE = self.args['bound_flag_dis_tolerance'])
 
         ret_tables = []
         text_list = []
@@ -84,9 +95,9 @@ class ExtractIndex:
             content = ''.join([item['text'] for item in words_list])
             text_list.append(content.replace(" ",""))
             if pid<self.args['no_vertical_page']:
-                tables = etwnv.get_table_by_page(page, self.args['under_this'], self.args['start_from_this'], self.args['above_this'], words_list)
+                tables = etwnv.get_table_by_page(page, words_list)
             else:
-                tables = etwon.get_table_by_page(page, self.args['under_this'], self.args['start_from_this'], self.args['above_this'], words_list)
+                tables = etwon.get_table_by_page(page, words_list)
             tables = [{'data': etwnv.drop_duplicate_cols(t['data']), 'unit':t['unit'], 'page':pid} for t in tables]
             
             ret_tables += tables
