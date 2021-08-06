@@ -36,7 +36,7 @@ class DealBoundary:
         bottombound = []
         for word in words_list:
             text = word['text']
-            if len(text)>12:
+            if len(text)>16:
                 continue
             top = word['top']
             bottom = word['bottom']

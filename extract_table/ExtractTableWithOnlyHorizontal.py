@@ -8,11 +8,13 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
     """抽取只有上下少数边界的表格
     """
     def __init__(self,
+        CURVES_MIN_MARGIN = 8,
+        MAX_ADJACENT_DIS = 5,
         UNDER_THIS = [],
         START_FROM_THIS = [],
         ABOVE_THIS = [],
         BOUND_FLAG_DIS_TOLERANCE = 2):
-        super(ExtractTableWithOnlyHorizontal, self).__init__()
+        super(ExtractTableWithOnlyHorizontal, self).__init__(CURVES_MIN_MARGIN, MAX_ADJACENT_DIS)
         self.MIN_TABLE_HEIGHT = 30
         self.deal_bound = DealBoundary(UNDER_THIS, START_FROM_THIS, ABOVE_THIS, BOUND_FLAG_DIS_TOLERANCE)
 
@@ -128,10 +130,11 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
         column_num = len(sorted_words_line[0][1])
         column_side = [[0, 0] for i in range(column_num)]
 
+        temp_words = []
         for i in range(len(sorted_words_line)):
             line = sorted_words_line[i]
             if len(line[1]) != column_num:
-                break
+                temp_words+=line[1]
             else:
                 for j in range(column_num):
                     if column_side[j] == [0, 0]:
@@ -141,7 +144,31 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                             column_side[j][0]=line[1][j][1]
                         if column_side[j][1]<line[1][j][2]:
                             column_side[j][1]=line[1][j][2]
-        
+
+        while temp_words:
+            words = temp_words.pop(0)
+            left_scan = False
+            right_scan = False
+            words_left = words[1]
+            words_right = words[2]
+            col_left = column_side[0][0]
+            if words_left<col_left:
+                column_side[0][0] = words_left
+
+            for i in range(1, len(column_side)):
+                col_left = column_side[i][0]
+                col_right = column_side[i][1]
+                if col_left>words_right:
+                    column_side[i-1][1] = max(column_side[i-1][1], words_right)
+                if col_left>words_left>column_side[i-1][1]:
+                    column_side[i][0] = words_left
+
+                # right = column_side[i][1]
+               
+                # if words[1]>right:
+                #     right_scan = True
+                #     column_side[i][1] = words[2]
+
         column_num -= 1
         merge_cols = []
         while column_num>0:
@@ -159,7 +186,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                     else:
                         merge_cols.append([i, col_id, ls, line[1][0]])
             column_num -= 1
-            
+        print(column_side)
         return column_side, merge_cols
 
     def get_no_line_table(self, column_side, words_line):
@@ -171,10 +198,11 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
         for i in range(len(words_line)):
             for word in words_line[i][1]:
                 for j in range(len(column_side)):
-                    if column_side[j][0]<=word[1]<=column_side[j][1]:
+                    if column_side[j][0]<=word[1]<=column_side[j][1]: #字的左边界在单元格内，则填入该单元格
                         data[i][j] = word[0]
-                    if column_side[j][0]<=word[2]<=column_side[j][1]:
+                    if column_side[j][0]<=word[2]<=column_side[j][1]: #字的右边界在单元格内，则填入该单元格
                         data[i][j] = word[0]
+                    
         return pd.DataFrame(data)
 
 
@@ -207,6 +235,8 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                     "page": 该表所在页
         """
         table_list = []
+        top_line_y = 0
+        bottom_line_y = 100000
         if not words_list:
             words_list = self.get_page_words(page)
         y_split = self.get_table_y(page)
@@ -215,12 +245,14 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
 
         for table_id in table_boundary:
             boundary = table_boundary[table_id]
-            up, dowun = float(boundary[0]), float(boundary[-1])
-            if abs(up-dowun)<self.MIN_TABLE_HEIGHT:
+            up, down = float(boundary[0]), float(boundary[-1])
+            top_line_y = max(top_line_y, up)
+            bottom_line_y = min(bottom_line_y, down)
+            if abs(up-down)<self.MIN_TABLE_HEIGHT:
                 continue
-            words_line, unit = self.get_words_line(words_list, up, dowun)
+            words_line, unit = self.get_words_line(words_list, up, down)
             column_side, merge_cols = self.split_cells(words_line)
             table = self.get_no_line_table(column_side, words_line)
-            table_list.append({'data': table, 'unit': unit})
-        return table_list
+            table_list.append({'data': table, 'unit': unit, 'top': up, 'bottom': down})
+        return table_list, top_line_y, bottom_line_y
         # return table_list

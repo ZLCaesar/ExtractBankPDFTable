@@ -1,7 +1,7 @@
 from package.toolkit import UnitRec
 
 class BaseExtractTable(object):
-    def __init__(self, CURVES_MIN_MARGIN=8):
+    def __init__(self, CURVES_MIN_MARGIN=8, MAX_ADJACENT_DIS=5):
         """[summary]
 
         Args:
@@ -9,7 +9,7 @@ class BaseExtractTable(object):
             串的首尾距离小于此值，则认为两者应该相连. Defaults to 5.
         """
         
-        self.MAX_ADJACENT_DIS = 5
+        self.MAX_ADJACENT_DIS = MAX_ADJACENT_DIS
         self.CURVES_MIN_MARGIN = CURVES_MIN_MARGIN
         self.unit_rec = UnitRec()
 
@@ -50,7 +50,7 @@ class BaseExtractTable(object):
                 i = 0
             else:
                 i += 1
-                
+
         i = 0
         while i < len(table)-1:
             curr_row = list(table.iloc[i])
@@ -73,7 +73,8 @@ class BaseExtractTable(object):
         # table = table.reset_index(drop=True)
         return table
 
-    def get_words_from_pymupdf(self, page, max_adjacent_dis):
+   
+    def get_words_from_pymupdf(self, page):
         """从pymupdf获取字符信息
 
         Args:
@@ -82,8 +83,6 @@ class BaseExtractTable(object):
         return:
             返回字符串信息，格式与pdfplumber类似
         """
-        if not max_adjacent_dis:
-            max_adjacent_dis = self.MAX_ADJACENT_DIS
         words = page.getTextWords()
         words_list = []
         for word in words:
@@ -91,7 +90,7 @@ class BaseExtractTable(object):
             if words_list:
                 temp = words_list[-1]
     #             print(word)
-                if x0-temp['x1']<max_adjacent_dis and abs(top-temp['top']+3)<max_adjacent_dis:  #应该是连续字符串
+                if x0-temp['x1']<self.MAX_ADJACENT_DIS and abs(top-temp['top']+3)<self.MAX_ADJACENT_DIS:  #应该是连续字符串
                     temp['text'] = temp['text']+text
                     temp['x1'] = x1
                     continue
@@ -101,14 +100,26 @@ class BaseExtractTable(object):
                 
         return words_list
 
-    def get_page_words(self, page, fitz_page=None, max_adjacent_dis=None):
+    def get_page_words(self, page, fitz_page=None):
         """
         转换每个字符的y坐标，使其与线坐标一致。（字符的y坐标其实位置在顶部，而线坐标的起始位置在底部）
         """
         if fitz_page:
-            words_list = self.get_words_from_pymupdf(fitz_page, max_adjacent_dis)
+            words_list = self.get_words_from_pymupdf(fitz_page)
         else:
-            words_list = page.extract_words()
+            words = page.extract_words()
+            words_list = []
+            for word in words:
+                if words_list:
+                    temp = words_list[-1]
+        #             print(word)
+                    if word['x0']-temp['x1']<self.MAX_ADJACENT_DIS and abs(word['top']-temp['top']+3)<self.MAX_ADJACENT_DIS:  #应该是连续字符串
+                        temp['text'] = temp['text']+word['text']
+                        temp['x1'] = word['x1']
+                        continue
+
+                temp = {'text': word['text'], 'x0': word['x0'], 'x1': word['x1'], 'top': word['top'], 'bottom': word['bottom']}
+                words_list.append(temp)
 
         for i in range(len(words_list)):
             words_list[i]['top'] = float(page.height)- float(words_list[i]['top'])

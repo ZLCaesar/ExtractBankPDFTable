@@ -8,7 +8,8 @@ from .DealRowBound import DealBoundary
 class ExtractTableWithVerticalPoint(BaseExtractTable):
     def __init__(
         self, 
-        CURVES_MIN_MARGIN=8, 
+        CURVES_MIN_MARGIN=8,
+        MAX_ADJACENT_DIS=5, 
         MAX_SPACE_HEIGHT=40, 
         CELL_HEIGHT=25, 
         MORE_THAN_ONE_CELL_HEIGHT=28,
@@ -31,7 +32,7 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
             UP_DEVIATION_TOLERANCE (int, optional): 上偏差容忍度，即在表格中，如果value的顶边线有重叠，重叠程度小于此值则认为在这个cell中. Defaults to 0.
             DOWN_DEVIATION_TOLERANCE (int, optional): 下偏差容忍度，即在表格中，如果value的底边线有重叠，重叠程度小于此值则认为在这个cell中. Defaults to 0.
         """
-        super(ExtractTableWithVerticalPoint, self).__init__(CURVES_MIN_MARGIN)
+        super(ExtractTableWithVerticalPoint, self).__init__(CURVES_MIN_MARGIN, MAX_ADJACENT_DIS)
         self.MAX_SPACE_HEIGHT = MAX_SPACE_HEIGHT
         self.CELL_HEIGHT = CELL_HEIGHT
         self.MORE_THAN_ONE_CELL_HEIGHT = MORE_THAN_ONE_CELL_HEIGHT
@@ -110,6 +111,9 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
                     "page": 该表所在页
         """
         table_list = []
+        top_line_y = 0
+        bottom_line_y = 100000
+
         if not words_list:
             words_list = self.get_page_words(page)
         y_split = self.get_table_y(page)
@@ -139,8 +143,9 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
 
             ys[-1] = ys[-1]-2
             cell_dict, unit = self.fill_content_into_cell(xs, ys, words_list)
-            
+            top_line_y = max(top_line_y, ys[0])
+            bottom_line_y = min(bottom_line_y, ys[-1])
             if cell_dict is not None and len(cell_dict)>2:
-                table_list.append({'data': cell_dict, 'unit': unit})
+                table_list.append({'data': cell_dict, 'unit': unit, 'top': ys[0], 'bottom': ys[-1]})
 
-        return table_list
+        return table_list, top_line_y, bottom_line_y
