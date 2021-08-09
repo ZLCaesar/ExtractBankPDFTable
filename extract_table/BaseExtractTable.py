@@ -1,14 +1,14 @@
 from package.toolkit import UnitRec
 
 class BaseExtractTable(object):
-    def __init__(self, CURVES_MIN_MARGIN=8, MAX_ADJACENT_DIS=5):
+    def __init__(self, CURVES_MIN_MARGIN=8, MAX_ADJACENT_DIS=5, CELL_MIN_MARGIN=8):
         """[summary]
 
         Args:
             MAX_ADJACENT_DIS (int, optional): 在使用pymupdf解析pdf抽取文字时，有些视觉上相邻的字符串是抽取出来是断开的，如果两个在同一行上的字符
             串的首尾距离小于此值，则认为两者应该相连. Defaults to 5.
         """
-        
+        self.CELL_MIN_MARGIN = CELL_MIN_MARGIN
         self.MAX_ADJACENT_DIS = MAX_ADJACENT_DIS
         self.CURVES_MIN_MARGIN = CURVES_MIN_MARGIN
         self.unit_rec = UnitRec()
@@ -95,7 +95,7 @@ class BaseExtractTable(object):
                     temp['x1'] = x1
                     continue
 
-            temp = {'text': text, 'x0': x0+1, 'x1': x1-1, 'top': top+3, 'bottom': bottom}
+            temp = {'text': text.replace(' ',''), 'x0': x0+1, 'x1': x1-1, 'top': top+3, 'bottom': bottom}
             words_list.append(temp)
                 
         return words_list
@@ -184,7 +184,7 @@ class BaseExtractTable(object):
                     add_x_flag = True
                     pop_item = None
                     for x in x_split:
-                        if abs(x-item[0])<self.CURVES_MIN_MARGIN:
+                        if abs(x-item[0])<self.CELL_MIN_MARGIN:
                             add_x_flag = False
                             pop_item = x
                             break
@@ -210,10 +210,10 @@ class BaseExtractTable(object):
                 pop_x0_item = None
                 pop_x1_item = None
                 for x in x_split:
-                    if abs(x-item['x0'])<self.CURVES_MIN_MARGIN:
+                    if abs(x-item['x0'])<self.CELL_MIN_MARGIN:
                         add_x0_flag = False
                         pop_x0_item=x
-                    if abs(x-item['x1'])<self.CURVES_MIN_MARGIN:
+                    if abs(x-item['x1'])<self.CELL_MIN_MARGIN:
                         add_x1_flag = False
                         pop_x1_item=x
     

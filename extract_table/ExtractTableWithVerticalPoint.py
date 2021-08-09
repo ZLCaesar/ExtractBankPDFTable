@@ -9,6 +9,7 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
     def __init__(
         self, 
         CURVES_MIN_MARGIN=8,
+        CELL_MIN_MARGIN=8,
         MAX_ADJACENT_DIS=5, 
         MAX_SPACE_HEIGHT=40, 
         CELL_HEIGHT=25, 
@@ -18,7 +19,8 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
         UNDER_THIS = [],
         START_FROM_THIS = [],
         ABOVE_THIS = [],
-        BOUND_FLAG_DIS_TOLERANCE = 2
+        BOUND_FLAG_DIS_TOLERANCE = 2,
+        MULTI_CELL_TOLERANCE_RATE = 0.1
         ):
         """抽取表格，适用的表格形式：
                 1. 横竖线充足（约等于完美表格）
@@ -31,13 +33,15 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
             MORE_THAN_ONE_CELL_HEIGHT (int, optional): 如果两条水平线的高度差超过此值，则认为有合并单元格的存在. Defaults to 28.
             UP_DEVIATION_TOLERANCE (int, optional): 上偏差容忍度，即在表格中，如果value的顶边线有重叠，重叠程度小于此值则认为在这个cell中. Defaults to 0.
             DOWN_DEVIATION_TOLERANCE (int, optional): 下偏差容忍度，即在表格中，如果value的底边线有重叠，重叠程度小于此值则认为在这个cell中. Defaults to 0.
+            MULTI_CELL_TOLERANCE_RATE: 当出现一个字符串在多个表格的情况时，如果超出比例小于此值，则不进行填充
         """
-        super(ExtractTableWithVerticalPoint, self).__init__(CURVES_MIN_MARGIN, MAX_ADJACENT_DIS)
+        super(ExtractTableWithVerticalPoint, self).__init__(CURVES_MIN_MARGIN, MAX_ADJACENT_DIS, CELL_MIN_MARGIN)
         self.MAX_SPACE_HEIGHT = MAX_SPACE_HEIGHT
         self.CELL_HEIGHT = CELL_HEIGHT
         self.MORE_THAN_ONE_CELL_HEIGHT = MORE_THAN_ONE_CELL_HEIGHT
         self.UP_DEVIATION_TOLERANCE = UP_DEVIATION_TOLERANCE
         self.DOWN_DEVIATION_TOLERANCE = DOWN_DEVIATION_TOLERANCE
+        self.MULTI_CELL_TOLERANCE_RATE = MULTI_CELL_TOLERANCE_RATE
         self.deal_bound = DealBoundary(UNDER_THIS, START_FROM_THIS, ABOVE_THIS, BOUND_FLAG_DIS_TOLERANCE)
 
     def fill_content_into_cell(self, xs, ys, words_list):
@@ -76,7 +80,12 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
                     x_begin = i
                 if x1>xs[i]:
                     x_end = i+1
-            
+            if x_end - x_begin > 1 and x_begin+1<len(xs):
+                cell_lenth = float(xs[x_begin+1]-xs[x_begin])
+                dis = float(xs[x_begin+1])-float(x0)
+                if dis/cell_lenth<self.MULTI_CELL_TOLERANCE_RATE:
+                    x_begin += 1
+
             for j in range(len(ys)):
                 if top<float(ys[j])+self.UP_DEVIATION_TOLERANCE:
                     y_begin = j
@@ -89,10 +98,10 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
                 continue
             for i in range(y_begin, min(y_end, len(ys)-1)):
                 for j in range(x_begin, min(x_end, len(xs)-1)):
-                    if data[i][j] and data[i][j]!=words['text']:
-                        data[i][j] += words['text']
-                    else:
-                        data[i][j] = words['text']
+                    # if data[i][j] and data[i][j]!=words['text']:
+                    #     data[i][j] += words['text']
+                    # else:
+                    data[i][j] = words['text']
 
         if all([not any(line) for line in data]):
             return None, None
@@ -145,7 +154,7 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
             cell_dict, unit = self.fill_content_into_cell(xs, ys, words_list)
             top_line_y = max(top_line_y, ys[0])
             bottom_line_y = min(bottom_line_y, ys[-1])
-            if cell_dict is not None and len(cell_dict)>=2:
+            if cell_dict is not None and len(cell_dict)>=1:
                 table_list.append({'data': cell_dict, 'unit': unit, 'top': ys[0], 'bottom': ys[-1]})
 
         return table_list, top_line_y, bottom_line_y

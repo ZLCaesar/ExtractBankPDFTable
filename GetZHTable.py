@@ -46,7 +46,7 @@ class ExtractIndex:
             if flag1 and flag2 and flag3:
                 tables[i+1]['data'] = tables[i]['data'].append(tables[i+1]['data']).reset_index(drop=True)
                 tables[i+1]['page'] -= 1
-
+                tables[i+1]['unit'] = tables[i]['unit']
         return tables
 
     def extract_index_from_text(self, index_list, text_list):
@@ -102,11 +102,13 @@ class ExtractIndex:
 
     def extarct_nb_table(self):
         etwnv = ExtractTableWithVerticalPoint(CURVES_MIN_MARGIN=self.args['curves_min_margin'],
+                                    CELL_MIN_MARGIN=self.args['cell_min_margin'],
                                     MAX_ADJACENT_DIS=self.args['max_adjacent_dis'],
                                     UNDER_THIS = self.args['under_this'],
                                     START_FROM_THIS = self.args['start_from_this'],
                                     ABOVE_THIS = self.args['above_this'],
-                                    BOUND_FLAG_DIS_TOLERANCE = self.args['bound_flag_dis_tolerance'])
+                                    BOUND_FLAG_DIS_TOLERANCE = self.args['bound_flag_dis_tolerance'],
+                                    MULTI_CELL_TOLERANCE_RATE = self.args['multi_cell_tolerance_rate'])
         etwon = ExtractTableWithOnlyHorizontal(CURVES_MIN_MARGIN=self.args['curves_min_margin'],
                                     MAX_ADJACENT_DIS=self.args['max_adjacent_dis'],
                                     UNDER_THIS = self.args['under_this'],

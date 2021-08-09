@@ -20,5 +20,6 @@ def get_config(bank):
     config_dict['down_deviation_tolerance'] = config.getint(bank, 'down_deviation_tolerance')
     config_dict['curves_min_margin'] = config.getint(bank, 'curves_min_margin')
     config_dict['max_adjacent_dis'] = config.getint(bank, 'max_adjacent_dis')
-
+    config_dict['multi_cell_tolerance_rate'] = config.getfloat(bank, 'multi_cell_tolerance_rate')
+    config_dict['cell_min_margin'] = config.getint(bank, 'cell_min_margin')
     return config_dict
