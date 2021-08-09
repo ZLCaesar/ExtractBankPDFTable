@@ -16,13 +16,14 @@ class UnitRec:
         }
         self.patterns = [
             '单位.{0,4}人民币(.{2,3})',
-            '人民币(.{2,3})'
+            '人民币(.{2,4})'
         ]
 
     def extract_unit(self, word):
         for pattern in self.patterns:
             finds = re.findall(pattern, word)
             if finds:
+                finds[0] = finds[0].replace(')', '').replace('）', '').replace(' ', '')
                 if finds[0] in self.units:
                     return finds[0], self.units[finds[0]]
 

@@ -1,6 +1,7 @@
-from re import U
+import re
 import pandas as pd
 
+from package.toolkit import UnitRec
 from .BaseExtractTable import BaseExtractTable
 from .DealRowBound import DealBoundary
 
@@ -17,6 +18,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
         super(ExtractTableWithOnlyHorizontal, self).__init__(CURVES_MIN_MARGIN, MAX_ADJACENT_DIS)
         self.MIN_TABLE_HEIGHT = 30
         self.deal_bound = DealBoundary(UNDER_THIS, START_FROM_THIS, ABOVE_THIS, BOUND_FLAG_DIS_TOLERANCE)
+        self.ur = UnitRec()
 
     def get_words_line(self, word_list, up, down):
         """根据给定的上下边界，找到可能的表格范围内的数据
@@ -186,7 +188,6 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                     else:
                         merge_cols.append([i, col_id, ls, line[1][0]])
             column_num -= 1
-        print(column_side)
         return column_side, merge_cols
 
     def get_no_line_table(self, column_side, words_line):
@@ -222,7 +223,31 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
     #         return column_side, self.get_no_line_table(column_side, words_line)
     #     except:
     #         return None, None
-        
+    def __deal_boundary(self, bound_dict, bottom_y):
+        for idx in range(1, len(bound_dict)+1):
+            if len(bound_dict.get(idx)) ==2:
+                temp = bound_dict.get(idx)
+                if float(temp[0])-float(temp[1])<20:
+                    if idx+1 in bound_dict:
+                        temp.append(bound_dict.get(idx+1)[0]+3)
+                        bound_dict[idx] = temp
+                    elif idx != 1:
+                        temp.append(bottom_y)
+                        bound_dict[idx] = temp
+        return bound_dict
+
+    def __valid_table(self, words_line):
+        count = 0
+        total = 0
+        for line_pos in words_line:
+            words_list = words_line.get(line_pos)
+            for word in words_list:
+                total += 1
+                if self.ur.convert_num(word[0]) is not None:
+                    return True
+
+        return False
+
     def get_table_by_page(self, page, words_list=None):
         """根据page对象获取表格。
         由于pdfplumber对部分年报（例如招商银行2020半年报）的文字无法抽取，需要借助pymupdf。因此如果传入的
@@ -242,7 +267,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
         y_split = self.get_table_y(page)
         upbound, bottombound = self.deal_bound.get_bound_by_flag(words_list)
         table_boundary = self.deal_bound.get_table_boundary(y_split, upbound, bottombound)
-
+        table_boundary = self.__deal_boundary(table_boundary, words_list[-2]['bottom'])
         for table_id in table_boundary:
             boundary = table_boundary[table_id]
             up, down = float(boundary[0]), float(boundary[-1])
@@ -251,6 +276,8 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
             if abs(up-down)<self.MIN_TABLE_HEIGHT:
                 continue
             words_line, unit = self.get_words_line(words_list, up, down)
+            if not self.__valid_table(words_line):
+                continue
             column_side, merge_cols = self.split_cells(words_line)
             table = self.get_no_line_table(column_side, words_line)
             table_list.append({'data': table, 'unit': unit, 'top': up, 'bottom': down})

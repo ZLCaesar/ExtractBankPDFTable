@@ -40,11 +40,11 @@ class ExtractIndex:
             if abs(float(top_line)-float(next_table['top']))<15 and abs(float(curr_table['bottom'])-float(bottom_line))<15:
                 flag2 = True
             for item in next_table['data'].iloc[0]:
-                if item and re.findall('\d+年', item):
+                if item and re.findall('\d{4}年', item):
                     flag3 = False
                     break
             if flag1 and flag2 and flag3:
-                tables[i+1]['data'] = tables[i]['data'].append(tables[i+1]['data'])
+                tables[i+1]['data'] = tables[i]['data'].append(tables[i+1]['data']).reset_index(drop=True)
                 tables[i+1]['page'] -= 1
 
         return tables
@@ -138,6 +138,7 @@ class ExtractIndex:
             ret_tables += tables
         index_list = self.index_list[:]
         index_dict = self.extract_index_from_text(index_list, text_list)
+
         ret_tables = self.__combine_table(ret_tables, top_line, bottom_line)
         self.ret['table'] = ret_tables
         self.ret['textQuota'] = index_dict

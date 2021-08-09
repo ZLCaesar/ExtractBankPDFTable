@@ -145,7 +145,7 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
             cell_dict, unit = self.fill_content_into_cell(xs, ys, words_list)
             top_line_y = max(top_line_y, ys[0])
             bottom_line_y = min(bottom_line_y, ys[-1])
-            if cell_dict is not None and len(cell_dict)>2:
+            if cell_dict is not None and len(cell_dict)>=2:
                 table_list.append({'data': cell_dict, 'unit': unit, 'top': ys[0], 'bottom': ys[-1]})
 
         return table_list, top_line_y, bottom_line_y
