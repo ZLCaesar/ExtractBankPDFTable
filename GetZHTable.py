@@ -1,9 +1,10 @@
 import re
 import fitz
 import pdfplumber
-from tqdm import tnrange, tqdm
+from tqdm import tqdm
 from package.extract_table.ExtractTableWithVerticalPoint import ExtractTableWithVerticalPoint
 from package.extract_table.ExtractTableWithOnlyHorizontal import ExtractTableWithOnlyHorizontal
+from package.extract_table.ExtractTableWithFullLine import ExtractTableWithFullLine
 from package.toolkit.ExtractIndexFromContent import extract_index_from_content, extract_file_name
 from package.toolkit import UnitRec
 from package.config.Configure import get_config
@@ -13,7 +14,8 @@ class ExtractIndex:
         func_map = {
             "ZHAOSHANG": self.extarct_zs_table,
             "NINGBO": self.extarct_nb_table,
-            "NANJING": self.extarct_zs_table
+            "NANJING": self.extarct_nb_table,
+            "JIANGSU": self.extarct_js_table
         }
         self.index_list = index_list
         self.ret = extract_file_name(pdf_file_path)
@@ -37,7 +39,7 @@ class ExtractIndex:
             next_table = tables[i+1]
             if len(curr_table['data'].columns) == len(next_table['data'].columns):
                 flag1 = True
-            if abs(float(top_line)-float(next_table['top']))<15 and abs(float(curr_table['bottom'])-float(bottom_line))<15:
+            if abs(float(top_line)-float(next_table['top']))<self.args['combine_table_margin'] and abs(float(curr_table['bottom'])-float(bottom_line))<self.args['combine_table_margin']:
                 flag2 = True
             for item in next_table['data'].iloc[0]:
                 if item and re.findall('\d{4}年', item):
@@ -47,10 +49,11 @@ class ExtractIndex:
                 tables[i+1]['data'] = tables[i]['data'].append(tables[i+1]['data']).reset_index(drop=True)
                 tables[i+1]['page'] -= 1
                 tables[i+1]['unit'] = tables[i]['unit']
+            
         return tables
 
     def extract_index_from_text(self, index_list, text_list):
-        ur = UnitRec()
+        ur = UnitRec(self.args['unit_patterns'])
         index_dict = {item: None for item in index_list}
 
         for text in text_list:
@@ -65,14 +68,7 @@ class ExtractIndex:
         return index_dict
 
     def extarct_zs_table(self):
-        etwnv = ExtractTableWithVerticalPoint(CURVES_MIN_MARGIN=self.args['curves_min_margin'],
-                                    MAX_ADJACENT_DIS=self.args['max_adjacent_dis'],
-                                    UP_DEVIATION_TOLERANCE=self.args['up_deviation_tolerance'], 
-                                    DOWN_DEVIATION_TOLERANCE=self.args['down_deviation_tolerance'],
-                                    UNDER_THIS = self.args['under_this'],
-                                    START_FROM_THIS = self.args['start_from_this'],
-                                    ABOVE_THIS = self.args['above_this'],
-                                    BOUND_FLAG_DIS_TOLERANCE = self.args['bound_flag_dis_tolerance'])
+        etwnv = ExtractTableWithVerticalPoint(self.args)
         
         ret_tables = []
         text_list = []
@@ -95,26 +91,15 @@ class ExtractIndex:
             ret_tables += tables
         index_list = self.index_list[:]
         index_dict = self.extract_index_from_text(index_list, text_list)
+        
         ret_tables = self.__combine_table(ret_tables, top_line, bottom_line)
         self.ret['table'] = ret_tables
         self.ret['textQuota'] = index_dict
         return self.ret
 
     def extarct_nb_table(self):
-        etwnv = ExtractTableWithVerticalPoint(CURVES_MIN_MARGIN=self.args['curves_min_margin'],
-                                    CELL_MIN_MARGIN=self.args['cell_min_margin'],
-                                    MAX_ADJACENT_DIS=self.args['max_adjacent_dis'],
-                                    UNDER_THIS = self.args['under_this'],
-                                    START_FROM_THIS = self.args['start_from_this'],
-                                    ABOVE_THIS = self.args['above_this'],
-                                    BOUND_FLAG_DIS_TOLERANCE = self.args['bound_flag_dis_tolerance'],
-                                    MULTI_CELL_TOLERANCE_RATE = self.args['multi_cell_tolerance_rate'])
-        etwon = ExtractTableWithOnlyHorizontal(CURVES_MIN_MARGIN=self.args['curves_min_margin'],
-                                    MAX_ADJACENT_DIS=self.args['max_adjacent_dis'],
-                                    UNDER_THIS = self.args['under_this'],
-                                    START_FROM_THIS = self.args['start_from_this'],
-                                    ABOVE_THIS = self.args['above_this'],
-                                    BOUND_FLAG_DIS_TOLERANCE = self.args['bound_flag_dis_tolerance'])
+        etwnv = ExtractTableWithVerticalPoint(self.args)
+        etwon = ExtractTableWithOnlyHorizontal(self.args)
 
         ret_tables = []
         text_list = []
@@ -141,6 +126,41 @@ class ExtractIndex:
         index_list = self.index_list[:]
         index_dict = self.extract_index_from_text(index_list, text_list)
 
+        ret_tables = self.__combine_table(ret_tables, top_line, bottom_line)
+        self.ret['table'] = ret_tables
+        self.ret['textQuota'] = index_dict
+        return self.ret
+
+
+    def extarct_js_table(self):
+        etwfl = ExtractTableWithFullLine(self.args)
+        etwon = ExtractTableWithOnlyHorizontal(self.args)
+
+        ret_tables = []
+        text_list = []
+        top_line = 0
+        bottom_line = 10000
+        for pid in tqdm(range(len(self.pdf.pages))):
+            
+            if self.use_fitz:
+                page_mu = self.pdf_mu.loadPage(pid)
+            else:
+                page_mu = None
+            page = self.pdf.pages[pid]
+            words_list = etwfl.get_page_words(page, page_mu)
+            content = ''.join([item['text'] for item in words_list])
+            text_list.append(content.replace(" ",""))
+            if pid<self.args['no_vertical_page']:
+                tables, top_line_y, bottom_line_y = etwfl.get_table_by_page(page, words_list)
+            else:
+                tables, top_line_y, bottom_line_y = etwon.get_table_by_page(page, words_list)
+            top_line = max(top_line, top_line_y)
+            bottom_line = min(bottom_line, bottom_line_y)
+            tables = [{'data': etwfl.drop_duplicate_cols(t['data']), 'unit':t['unit'], 'top': t['top'], 'bottom': t['bottom'], 'page':pid} for t in tables]
+            
+            ret_tables += tables
+        index_list = self.index_list[:]
+        index_dict = self.extract_index_from_text(index_list, text_list)
         ret_tables = self.__combine_table(ret_tables, top_line, bottom_line)
         self.ret['table'] = ret_tables
         self.ret['textQuota'] = index_dict

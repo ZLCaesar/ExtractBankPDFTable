@@ -2,7 +2,7 @@ import re
 import locale
 
 class UnitRec:
-    def __init__(self):
+    def __init__(self, patterns):
         self.units = {
             "千万元": 10000000,
             "百万元": 1000000,
@@ -14,10 +14,7 @@ class UnitRec:
             "十亿元": 1000000000,
             "亿元": 100000000
         }
-        self.patterns = [
-            '单位.{0,4}人民币(.{2,3})',
-            '人民币(.{2,4})'
-        ]
+        self.patterns = patterns
 
     def extract_unit(self, word):
         for pattern in self.patterns:

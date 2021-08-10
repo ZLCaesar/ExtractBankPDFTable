@@ -1,17 +1,17 @@
 from package.toolkit import UnitRec
 
 class BaseExtractTable(object):
-    def __init__(self, CURVES_MIN_MARGIN=8, MAX_ADJACENT_DIS=5, CELL_MIN_MARGIN=8):
+    def __init__(self, args):
         """[summary]
 
         Args:
             MAX_ADJACENT_DIS (int, optional): 在使用pymupdf解析pdf抽取文字时，有些视觉上相邻的字符串是抽取出来是断开的，如果两个在同一行上的字符
             串的首尾距离小于此值，则认为两者应该相连. Defaults to 5.
         """
-        self.CELL_MIN_MARGIN = CELL_MIN_MARGIN
-        self.MAX_ADJACENT_DIS = MAX_ADJACENT_DIS
-        self.CURVES_MIN_MARGIN = CURVES_MIN_MARGIN
-        self.unit_rec = UnitRec()
+        self.CELL_MIN_MARGIN = args['cell_min_margin']
+        self.MAX_ADJACENT_DIS = args['max_adjacent_dis']
+        self.CURVES_MIN_MARGIN = args['curves_min_margin']
+        self.unit_rec = UnitRec(args['unit_patterns'])
 
     def drop_duplicate_cols(self, table):
         """对抽取出来的表进行后处理。由于坐标细微误差，有可能导致:

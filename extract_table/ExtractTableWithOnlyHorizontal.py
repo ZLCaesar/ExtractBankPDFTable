@@ -1,24 +1,18 @@
 import re
 import pandas as pd
 
-from package.toolkit import UnitRec
 from .BaseExtractTable import BaseExtractTable
 from .DealRowBound import DealBoundary
 
 class ExtractTableWithOnlyHorizontal(BaseExtractTable):
     """抽取只有上下少数边界的表格
     """
-    def __init__(self,
-        CURVES_MIN_MARGIN = 8,
-        MAX_ADJACENT_DIS = 5,
-        UNDER_THIS = [],
-        START_FROM_THIS = [],
-        ABOVE_THIS = [],
-        BOUND_FLAG_DIS_TOLERANCE = 2):
-        super(ExtractTableWithOnlyHorizontal, self).__init__(CURVES_MIN_MARGIN, MAX_ADJACENT_DIS)
+    def __init__(self, args):
+        super(ExtractTableWithOnlyHorizontal, self).__init__(args)
         self.MIN_TABLE_HEIGHT = 30
-        self.deal_bound = DealBoundary(UNDER_THIS, START_FROM_THIS, ABOVE_THIS, BOUND_FLAG_DIS_TOLERANCE)
-        self.ur = UnitRec()
+        self.PRUNE_FLAG = args.get('prune_flag')
+        
+        self.deal_bound = DealBoundary(args['under_this'], args['start_from_this'], args['above_this'], args['bound_flag_dis_tolerance'])
 
     def get_words_line(self, word_list, up, down):
         """根据给定的上下边界，找到可能的表格范围内的数据
@@ -57,7 +51,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                             exist = True
                     if not exist:
                         words_line[bottom] = [[words['text'], words['x0'], words['x1']]]
-        
+        words_line = {y: sorted(value, key=lambda x: x[1]) for y, value in words_line.items()}
         return words_line, unit
 
     def judge(self, columns, x1, x2):
@@ -224,8 +218,10 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
     #     except:
     #         return None, None
     def __deal_boundary(self, bound_dict, bottom_y):
+        """对于缺少表底线的，根据规则进行底边的添加。例如连续两个没有底边界底表，上一个表的底边界是下一个表的上边界。页面底部的表的底边界是给定的bottom_y
+        """
         for idx in range(1, len(bound_dict)+1):
-            if len(bound_dict.get(idx)) ==2:
+            if idx in bound_dict and len(bound_dict.get(idx)) ==2:
                 temp = bound_dict.get(idx)
                 if float(temp[0])-float(temp[1])<20:
                     if idx+1 in bound_dict:
@@ -243,10 +239,30 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
             words_list = words_line.get(line_pos)
             for word in words_list:
                 total += 1
-                if self.ur.convert_num(word[0]) is not None:
+                if self.unit_rec.convert_num(word[0]) is not None:
                     return True
 
         return False
+
+    def __prune_table(self, table):
+        def find_flag():
+            flag = -1
+            for i, row in table.iterrows():
+                if i >3:
+                    break
+                for j in range(len(row)):
+                    if row[j] is not None:
+                        for item in self.PRUNE_FLAG:
+                            if item in row[j]:
+                                flag = i
+                                return flag
+            return flag
+        flag = find_flag()
+        if flag != -1:
+            for i in range(flag):
+                table = table.drop(i)
+            table = table.reset_index(drop=True)
+        return table
 
     def get_table_by_page(self, page, words_list=None):
         """根据page对象获取表格。
@@ -262,6 +278,8 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
         table_list = []
         top_line_y = 0
         bottom_line_y = 100000
+        if len(words_list)<10:
+            return [], top_line_y, bottom_line_y
         if not words_list:
             words_list = self.get_page_words(page)
         y_split = self.get_table_y(page)
@@ -280,6 +298,8 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                 continue
             column_side, merge_cols = self.split_cells(words_line)
             table = self.get_no_line_table(column_side, words_line)
+            if self.PRUNE_FLAG:
+                table = self.__prune_table(table)
             table_list.append({'data': table, 'unit': unit, 'top': up, 'bottom': down})
         return table_list, top_line_y, bottom_line_y
         # return table_list

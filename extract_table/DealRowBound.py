@@ -93,8 +93,8 @@ class DealBoundary:
                         y.pop(i+pos)
                         i = i+pos
                         continue
-                
                 i += 1
+
         table_id = 0
         table_boundary = {}
         if len(y_split)<2:

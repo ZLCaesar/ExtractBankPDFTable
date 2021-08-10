@@ -6,22 +6,7 @@ from .BaseExtractTable import BaseExtractTable
 from .DealRowBound import DealBoundary
 
 class ExtractTableWithVerticalPoint(BaseExtractTable):
-    def __init__(
-        self, 
-        CURVES_MIN_MARGIN=8,
-        CELL_MIN_MARGIN=8,
-        MAX_ADJACENT_DIS=5, 
-        MAX_SPACE_HEIGHT=40, 
-        CELL_HEIGHT=25, 
-        MORE_THAN_ONE_CELL_HEIGHT=28,
-        UP_DEVIATION_TOLERANCE=0,
-        DOWN_DEVIATION_TOLERANCE=0,
-        UNDER_THIS = [],
-        START_FROM_THIS = [],
-        ABOVE_THIS = [],
-        BOUND_FLAG_DIS_TOLERANCE = 2,
-        MULTI_CELL_TOLERANCE_RATE = 0.1
-        ):
+    def __init__(self, args):
         """抽取表格，适用的表格形式：
                 1. 横竖线充足（约等于完美表格）
                 2. 视觉上只有水平线，但有列分割结点（视觉上没有垂直线，但水平线按照列进行了分段）
@@ -35,14 +20,15 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
             DOWN_DEVIATION_TOLERANCE (int, optional): 下偏差容忍度，即在表格中，如果value的底边线有重叠，重叠程度小于此值则认为在这个cell中. Defaults to 0.
             MULTI_CELL_TOLERANCE_RATE: 当出现一个字符串在多个表格的情况时，如果超出比例小于此值，则不进行填充
         """
-        super(ExtractTableWithVerticalPoint, self).__init__(CURVES_MIN_MARGIN, MAX_ADJACENT_DIS, CELL_MIN_MARGIN)
-        self.MAX_SPACE_HEIGHT = MAX_SPACE_HEIGHT
-        self.CELL_HEIGHT = CELL_HEIGHT
-        self.MORE_THAN_ONE_CELL_HEIGHT = MORE_THAN_ONE_CELL_HEIGHT
-        self.UP_DEVIATION_TOLERANCE = UP_DEVIATION_TOLERANCE
-        self.DOWN_DEVIATION_TOLERANCE = DOWN_DEVIATION_TOLERANCE
-        self.MULTI_CELL_TOLERANCE_RATE = MULTI_CELL_TOLERANCE_RATE
-        self.deal_bound = DealBoundary(UNDER_THIS, START_FROM_THIS, ABOVE_THIS, BOUND_FLAG_DIS_TOLERANCE)
+        super(ExtractTableWithVerticalPoint, self).__init__(args)
+        self.MAX_SPACE_HEIGHT = args['max_space_height']
+        self.CELL_HEIGHT = args['cell_height']
+        self.MORE_THAN_ONE_CELL_HEIGHT = args['more_than_one_cell_height']
+        self.UP_DEVIATION_TOLERANCE = args['up_deviation_tolerance']
+        self.DOWN_DEVIATION_TOLERANCE = args['down_deviation_tolerance']
+        self.MULTI_CELL_TOLERANCE_RATE = args['multi_cell_tolerance_rate']
+        
+        self.deal_bound = DealBoundary(args['under_this'], args['start_from_this'], args['above_this'], args['bound_flag_dis_tolerance'])
 
     def fill_content_into_cell(self, xs, ys, words_list):
         """
