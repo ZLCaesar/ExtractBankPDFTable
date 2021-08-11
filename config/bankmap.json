@@ -1,14 +1,7 @@
 {
-    "招商银行": "ZHAOSHANG",
-    "招商": "ZHAOSHANG",
-    "ZHAOSHANG": "ZHAOSHANG",
-    "宁波银行": "NINGBO",
-    "宁波": "NINGBO",
-    "NINGBO": "NINGBO",
-    "南京银行": "NANJING",
-    "南京": "NANJING",
-    "NANJING": "NANJING",
-    "江苏银行": "JIANGSU",
-    "江苏": "JIANGSU",
-    "JIANGSU": "JIANGSU"
+    "招商银行": "ZHAOSHANG", "招商": "ZHAOSHANG", "ZHAOSHANG": "ZHAOSHANG", "1600036": "ZHAOSHANG",
+    "宁波银行": "NINGBO", "宁波": "NINGBO", "NINGBO": "NINGBO", "502039388": "NINGBO",
+    "南京银行": "NANJING", "南京": "NANJING", "NANJING": "NANJING", "502038360": "NANJING",
+    "江苏银行": "JIANGSU", "江苏": "JIANGSU", "JIANGSU": "JIANGSU", "3IPB05761F": "JIANGSU",
+    "平安银行": "PINGAN", "平安": "PINGAN", "PINGAN": "PINGAN", "1000001": "PINGAN"
 }

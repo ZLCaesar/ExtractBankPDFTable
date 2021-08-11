@@ -2,30 +2,30 @@ import re
 
 num_pattern = '([\d,%\.]+[十百千万亿]*)'
 maps = {
-    "第一季度": 'Q1',
-    "第二季度": 'Q2',
-    "第三季度": 'Q3',
-    "第四季度": 'Q4',
-    "半年": 'Q2',
-    "年": 'Q4'
+    "第一季度": 'Q1', "0331": "Q1",
+    "第二季度": 'Q2', "半年": 'Q2', "0630": 'Q2',
+    "第三季度": 'Q3', "0930": "Q3",
+    "第四季度": 'Q4', "年": 'Q4', "1231": "Q4"
 }
 bank_maps = {
     "ZHAOSHANG": "招商银行",
     "NINGBO": "宁波银行"
 }
+
 def extract_file_name(file_name):
     parts = file_name.split('/')
     if len(parts)>1:
         file_name = parts[-1]
     # pattern = '(.*银行)(\d+)年?([第一二三四季度半年Q\d]+)'
-    pattern = '(.*银行|[A-Z]+)(\d+)年?([第一二三四季度半年Q\d]+)'
-    info = re.findall(pattern, file_name.upper())
-    ret = {'bank': None, 'year': None, 'quarter': None}
-    if info and len(info[0])==3:
-        ret['bank'] = bank_maps.get(info[0][0], info[0][0])
-        ret['year'] = info[0][1]
-        ret['quarter'] = maps.get(info[0][2], info[0][2])
-        return ret
+    patterns = [r'(.*银行|[A-Z]+)(\d+)年?([第一二三四季度半年Q\d]+)', r'([\da-zA-Z]+)_(\d{4})(\d{4})']
+    for pattern in patterns:
+        info = re.findall(pattern, file_name.upper())
+        ret = {'bank': None, 'year': None, 'quarter': None}
+        if info and len(info[0])==3:
+            ret['bank'] = info[0][0]
+            ret['year'] = info[0][1]
+            ret['quarter'] = maps.get(info[0][2], info[0][2])
+            return ret
 
     return ret
 

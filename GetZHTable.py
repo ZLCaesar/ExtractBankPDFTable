@@ -15,7 +15,8 @@ class ExtractIndex:
             "ZHAOSHANG": self.extarct_zs_table,
             "NINGBO": self.extarct_nb_table,
             "NANJING": self.extarct_nb_table,
-            "JIANGSU": self.extarct_js_table
+            "JIANGSU": self.extarct_js_table,
+            "PINGAN": self.extarct_js_table
         }
         self.index_list = index_list
         self.ret = extract_file_name(pdf_file_path)
@@ -25,6 +26,7 @@ class ExtractIndex:
             self.args = get_config(self.ret['bank'])
         else:
             raise ValueError("Cannot find any bank name!")
+        print("bank_name:", self.args['bank_name'])
         self.use_fitz = self.args['use_fitz']
         self.pdf = pdfplumber.open(pdf_file_path)
         if self.use_fitz:
@@ -51,6 +53,21 @@ class ExtractIndex:
                 tables[i+1]['unit'] = tables[i]['unit']
             
         return tables
+
+    def valid_no_vertical_feat(self, no_vertical_feat, words_list):
+        valid_list = []
+        nb_lines = int(no_vertical_feat[0])
+        if nb_lines == len(words_list):
+            valid_list.append(True)
+        else:
+            return False
+        for i in range(len(no_vertical_feat)-1):
+            if no_vertical_feat[i+1]:
+                if no_vertical_feat[i+1] in words_list[i]['text']:
+                    valid_list.append(True)
+                else:
+                    return False
+        return all(valid_list)
 
     def extract_index_from_text(self, index_list, text_list):
         ur = UnitRec(self.args['unit_patterns'])
@@ -105,6 +122,7 @@ class ExtractIndex:
         text_list = []
         top_line = 0
         bottom_line = 10000
+        no_vertical_page = len(self.pdf.pages)
         for pid in tqdm(range(len(self.pdf.pages))):
             if self.use_fitz:
                 page_mu = self.pdf_mu.loadPage(pid)
@@ -114,7 +132,10 @@ class ExtractIndex:
             words_list = etwnv.get_page_words(page, page_mu)
             content = ''.join([item['text'] for item in words_list])
             text_list.append(content.replace(" ",""))
-            if pid<self.args['no_vertical_page']:
+            if self.valid_no_vertical_feat(self.args['no_vertical_feat'], words_list):
+                no_vertical_page = pid
+                print('no_vertical_page', no_vertical_page)
+            if pid<no_vertical_page:
                 tables, top_line_y, bottom_line_y = etwnv.get_table_by_page(page, words_list)
             else:
                 tables, top_line_y, bottom_line_y = etwon.get_table_by_page(page, words_list)
@@ -140,6 +161,7 @@ class ExtractIndex:
         text_list = []
         top_line = 0
         bottom_line = 10000
+        no_vertical_page = len(self.pdf.pages)
         for pid in tqdm(range(len(self.pdf.pages))):
             
             if self.use_fitz:
@@ -150,7 +172,10 @@ class ExtractIndex:
             words_list = etwfl.get_page_words(page, page_mu)
             content = ''.join([item['text'] for item in words_list])
             text_list.append(content.replace(" ",""))
-            if pid<self.args['no_vertical_page']:
+            if self.valid_no_vertical_feat(self.args['no_vertical_feat'], words_list):
+                no_vertical_page = pid
+                print('no_vertical_page', no_vertical_page)
+            if pid<no_vertical_page:
                 tables, top_line_y, bottom_line_y = etwfl.get_table_by_page(page, words_list)
             else:
                 tables, top_line_y, bottom_line_y = etwon.get_table_by_page(page, words_list)
@@ -161,6 +186,8 @@ class ExtractIndex:
             ret_tables += tables
         index_list = self.index_list[:]
         index_dict = self.extract_index_from_text(index_list, text_list)
+        print('top_line:', top_line)
+        print('bottom_line:', bottom_line)
         ret_tables = self.__combine_table(ret_tables, top_line, bottom_line)
         self.ret['table'] = ret_tables
         self.ret['textQuota'] = index_dict

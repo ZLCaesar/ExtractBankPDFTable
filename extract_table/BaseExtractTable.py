@@ -118,7 +118,7 @@ class BaseExtractTable(object):
                         temp['x1'] = word['x1']
                         continue
 
-                temp = {'text': word['text'], 'x0': word['x0'], 'x1': word['x1'], 'top': word['top'], 'bottom': word['bottom']}
+                temp = {'text': word['text'].replace(" ",""), 'x0': word['x0'], 'x1': word['x1'], 'top': word['top'], 'bottom': word['bottom']}
                 words_list.append(temp)
 
         for i in range(len(words_list)):
