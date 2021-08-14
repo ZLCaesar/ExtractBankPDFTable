@@ -12,6 +12,7 @@ class BaseExtractTable(object):
         self.MAX_ADJACENT_DIS = args['max_adjacent_dis']
         self.CURVES_MIN_MARGIN = args['curves_min_margin']
         self.unit_rec = UnitRec(args['unit_patterns'])
+        self.args = args
 
     def drop_duplicate_cols(self, table):
         """对抽取出来的表进行后处理。由于坐标细微误差，有可能导致:
@@ -174,7 +175,8 @@ class BaseExtractTable(object):
         获取每一列的横坐标
         """
         x_split = set()
-        if page.curves:
+        standar_line = page.vertical_edges if self.args['curves_first'] else page.horizontal_edges
+        if self.args['curves_first'] and page.curves:
             for i in range(len(page.curves)):
                 for item in page.curves[i]['pts']:
                     if y_range and (y_range[-1]>item[1] or item[1]>y_range[0]):
@@ -193,13 +195,14 @@ class BaseExtractTable(object):
                     else:
                         x_split.remove(pop_item)
                         x_split.add(max(item[0], pop_item))
-                        
-        else:         
-            for item in page.vertical_edges:
+                    
+        else: 
+            for item in standar_line:
                 if y_range and (y_range[-1]>item['y0'] or item['y0']>y_range[0]):
                     continue
                 if y_range and (y_range[-1]>item['y1'] or item['y1']>y_range[0]):
                     continue
+                
                 if not x_split:
                     x_split.add(item['x0'])
                     if abs(item['x1']-item['x0'])>self.CURVES_MIN_MARGIN:
@@ -216,7 +219,7 @@ class BaseExtractTable(object):
                     if abs(x-item['x1'])<self.CELL_MIN_MARGIN:
                         add_x1_flag = False
                         pop_x1_item=x
-    
+
                 if add_x0_flag:
                     x_split.add(item['x0'])
                 else:
@@ -229,7 +232,7 @@ class BaseExtractTable(object):
                         x_split.remove(pop_x1_item)
                         x_split.add(max(item['x1'], pop_x1_item))
 
-        return x_split
+            return x_split
 
     def get_table_by_page(self):
         raise NotImplementedError

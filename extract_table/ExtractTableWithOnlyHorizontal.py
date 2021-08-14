@@ -11,7 +11,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
         super(ExtractTableWithOnlyHorizontal, self).__init__(args)
         self.MIN_TABLE_HEIGHT = 30
         self.PRUNE_FLAG = args.get('prune_flag')
-        
+        self.STRENGTHEN_START_FROM_THIS = args.get('strengthen_start_from_this')
         self.deal_bound = DealBoundary(args['under_this'], args['start_from_this'], args['above_this'], args['bound_flag_dis_tolerance'])
 
     def get_words_line(self, word_list, up, down):
@@ -283,9 +283,13 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
         if not words_list:
             words_list = self.get_page_words(page)
         y_split = self.get_table_y(page)
-        upbound, bottombound = self.deal_bound.get_bound_by_flag(words_list)
+        if self.STRENGTHEN_START_FROM_THIS:
+            upbound, bottombound = self.deal_bound.get_bound_by_flag(words_list, y_split)
+        else:
+            upbound, bottombound = self.deal_bound.get_bound_by_flag(words_list)
         table_boundary = self.deal_bound.get_table_boundary(y_split, upbound, bottombound)
         table_boundary = self.__deal_boundary(table_boundary, words_list[-2]['bottom'])
+
         for table_id in table_boundary:
             boundary = table_boundary[table_id]
             up, down = float(boundary[0]), float(boundary[-1])

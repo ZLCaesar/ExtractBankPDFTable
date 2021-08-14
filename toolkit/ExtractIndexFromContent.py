@@ -17,7 +17,7 @@ def extract_file_name(file_name):
     if len(parts)>1:
         file_name = parts[-1]
     # pattern = '(.*银行)(\d+)年?([第一二三四季度半年Q\d]+)'
-    patterns = [r'(.*银行|[A-Z]+)(\d+)年?([第一二三四季度半年Q\d]+)', r'([\da-zA-Z]+)_(\d{4})(\d{4})']
+    patterns = [r'([\da-zA-Z]+)_(\d{4})(\d{4})', r'(.*银行|[A-Z]+)(\d+)年?([第一二三四季度半年Q\d]+)']
     for pattern in patterns:
         info = re.findall(pattern, file_name.upper())
         ret = {'bank': None, 'year': None, 'quarter': None}
@@ -34,15 +34,15 @@ def recombination(find_dict):
     if not find_dict:
         return []
     temp = []
-    sub_temp = [[find_dict[0][0], 1]]
+    sub_temp = [[find_dict[0][0], 1, find_dict[0][1][2]]]
     for i in range(1, len(find_dict)):
         if find_dict[i][1][0]-find_dict[i-1][1][0] < 1:   #形如‘中长期贷款平均余额26,139.58亿元，利息收入612.94亿元’
-            sub_temp.append([find_dict[i][0], 0])
+            sub_temp.append([find_dict[i][0], 0, find_dict[i][1][2]])
         elif find_dict[i][1][0]-find_dict[i-1][1][1]<4:
-            sub_temp.append([find_dict[i][0], 1])
+            sub_temp.append([find_dict[i][0], 1, find_dict[i][1][2]])
         else:
             temp.append(sub_temp)
-            sub_temp = [[find_dict[i][0], 1]]
+            sub_temp = [[find_dict[i][0], 1, find_dict[i][1][2]]]
     if sub_temp:
         temp.append(sub_temp)
         
@@ -53,22 +53,26 @@ def extract_index_from_content(index_list, text):
     find_dict = {}
     inner = '.{0,50}?'
     for index in index_list:
+        temp_text = text
         pattern = inner.join(index)
         regex = re.compile(pattern)
         match = regex.search(text)
-        if match:
-#             print(match)
+        while(match):
             s, e = match.start(), match.end()
-#             if (e-s)/len(index)>2:
-#                 continue
-            find_dict[index] = [s, e, pattern]
+            temp_text = temp_text[e:]
+            if index in find_dict:
+                temp = find_dict.get(index)
+                if e-s<temp[1]-temp[0]:
+                    find_dict[index] = [s, e, match.group()]
+            else:
+                find_dict[index] = [s, e, match.group()]
+            match = regex.search(temp_text)
 
     find_dict = sorted(find_dict.items(), key=lambda x:x[1][0])
     find_dict = recombination(find_dict)
-
     if len(find_dict) == 1 and len(find_dict[0]) == 1:
         index = find_dict[0][0][0]  #第一行，第一个，0元素
-        value = re.findall(inner.join(index)+'.{0,4}?'+num_pattern, text)
+        value = re.findall(find_dict[0][0][2]+'.{0,4}?'+num_pattern, text)
         if value:
             ret_dict[index] = value[0]
 

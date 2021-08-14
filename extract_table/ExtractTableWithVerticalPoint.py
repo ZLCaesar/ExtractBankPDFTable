@@ -46,6 +46,7 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
         ret_unit = 1
         words_id = -1
         data = [[None for i in range(len(xs)-1)] for j in range(len(ys)-1)]
+
         for words in words_list:
             words_id += 1
             x_begin = -1
@@ -114,7 +115,7 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
         y_split = self.get_table_y(page)
         upbound, bottombound = self.deal_bound.get_bound_by_flag(words_list)
         table_boundary = self.deal_bound.get_table_boundary(y_split, upbound, bottombound)
-
+    
         for table_id in table_boundary:
             memory = {}
             temp = table_boundary.get(table_id)
@@ -128,14 +129,12 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
 
                 temp = temp[:i+1]+item+temp[i+1:]
             table_boundary[table_id] = temp
-
         for table_id in table_boundary:
             boundary = table_boundary[table_id]
             x_range = self.get_table_x(page, boundary)
             ys = boundary
             xs = sorted(x_range)
             # ys = [ys[0]+self.CELL_HEIGHT]+ys
-
             ys[-1] = ys[-1]-2
             cell_dict, unit = self.fill_content_into_cell(xs, ys, words_list)
             top_line_y = max(top_line_y, ys[0])

@@ -9,6 +9,7 @@ class ExtractTableWithFullLine(BaseExtractTable):
         self.UNDER_THIS = args['under_this']
         self.MAX_SPACE_HEIGHT = args['max_space_height']
         self.FIND_HEAD_MORE = args['find_head_more']
+        
     def get_table_by_page(self, page, words_list):
         table_list = []
         tables = page.extract_tables()

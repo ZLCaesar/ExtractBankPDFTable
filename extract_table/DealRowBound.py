@@ -19,7 +19,15 @@ class DealBoundary:
         self.ABOVE_THIS = above_this
         self.BOUND_FLAG_DIS_TOLERANCE = bound_flag_dis_tolerance
 
-    def get_bound_by_flag(self, words_list):
+    def get_bound_by_flag(self, words_list, y_split=[]):
+        y_split = sorted(y_split, reverse=True)
+        def strengthen_valid(bottom):
+            if not y_split:
+                return True
+            for y in y_split:
+                if abs(float(bottom)-float(y))<2:
+                    return True
+            return False
         def find_proper_line(bound):
             bound = sorted(bound, reverse=True)
             if len(bound)<2:
@@ -52,7 +60,11 @@ class DealBoundary:
                 
             for pattern in self.START_FROM_THIS:
                 if re.findall(pattern, text):
-                    upbound.append(top+self.BOUND_FLAG_DIS_TOLERANCE)
+                    if strengthen_valid(bottom):
+                        
+                        upbound.append(top+self.BOUND_FLAG_DIS_TOLERANCE)
+                    else:
+                        upbound.append(bottom-self.BOUND_FLAG_DIS_TOLERANCE)
                     find2 = True
                     break
             if find2:
