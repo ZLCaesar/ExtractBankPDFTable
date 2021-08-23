@@ -91,11 +91,11 @@ class ExtractTableWithFullLine(BaseExtractTable):
                     flag_first = True  #将标记打开，以后就不再进入此代码
                     if len(head) == len(first_row)+self.FIND_HEAD_MORE: #如果head里的元素个数 等于表格列数+2（2为页眉等的信息+first_row的第一个元素）
                         flag_head = True  #将标记打开，说明找到了真第一行
-                        head = head[1:len(head)-1]
+                        head = head[self.FIND_HEAD_MORE-1:len(head)-1]
                 
                 first_row[text]['top'] = top
                 first_row[text]['bottom'] = bottom
-            elif text in last_row:
+            if text in last_row:
                 last_row[text]['top'] = top
                 last_row[text]['bottom'] = bottom
 

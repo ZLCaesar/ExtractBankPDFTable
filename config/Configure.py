@@ -20,5 +20,7 @@ def get_config(bank):
                     config_dict[item[0]] = config.getboolean(bank, item[0])
                 except:
                     config_dict[item[0]] = config.get(bank, item[0]).split(', ')
+                    if config_dict[item[0]] == ['[]']:
+                        config_dict[item[0]] = []
 
     return config_dict

@@ -1,3 +1,5 @@
+import re
+from zhconv import convert
 from package.toolkit import UnitRec
 
 class BaseExtractTable(object):
@@ -36,7 +38,8 @@ class BaseExtractTable(object):
             if all(temp):
                 return True
             return False
-
+        if len(table) == 1:
+            return table
         i = 0
         while i < len(table.columns)-1:
             curr_col = list(table[i])
@@ -105,6 +108,11 @@ class BaseExtractTable(object):
         """
         转换每个字符的y坐标，使其与线坐标一致。（字符的y坐标其实位置在顶部，而线坐标的起始位置在底部）
         """
+        def _is_neibor(word, temp, dev=0):
+            if abs(word['x0']-temp['x1'])<self.MAX_ADJACENT_DIS+dev and abs(word['top']-temp['top']+1)<self.MAX_ADJACENT_DIS:
+                return True
+            return False
+
         if fitz_page:
             words_list = self.get_words_from_pymupdf(fitz_page)
         else:
@@ -114,11 +122,17 @@ class BaseExtractTable(object):
                 if words_list:
                     temp = words_list[-1]
         #             print(word)
-                    if word['x0']-temp['x1']<self.MAX_ADJACENT_DIS and abs(word['top']-temp['top']+3)<self.MAX_ADJACENT_DIS:  #应该是连续字符串
+                    if _is_neibor(word, temp) and re.findall(r'\d{4}年\d{1,2}-\d{1,2}月', temp['text']):
+                        pass
+                    elif _is_neibor(word, temp):  #应该是连续字符串
                         temp['text'] = temp['text']+word['text']
                         temp['x1'] = word['x1']
                         continue
-
+                    elif _is_neibor(word, temp, 2) and temp['text'] == '-':
+                        temp['text'] = temp['text']+word['text']
+                        temp['x1'] = word['x1']
+                        continue
+                    
                 temp = {'text': word['text'].replace(" ",""), 'x0': word['x0'], 'x1': word['x1'], 'top': word['top'], 'bottom': word['bottom']}
                 words_list.append(temp)
 
@@ -127,6 +141,8 @@ class BaseExtractTable(object):
             words_list[i]['bottom'] = float(page.height) - float(words_list[i]['bottom'])
             words_list[i]['x0'] = float(words_list[i]['x0'] + 1)
             words_list[i]['x1'] = float(words_list[i]['x1'] - 1)
+            if self.args.get('zhcn_convert', False):
+                words_list[i]['text'] = convert(words_list[i]['text'], 'zh-cn')
         words_list = sorted(words_list, key=lambda x:x['top'], reverse=True)
         
         return words_list
@@ -168,7 +184,8 @@ class BaseExtractTable(object):
                     y_split.add(item['y0'])
                 if add_y1_flag:
                     y_split.add(item['y1'])
-        return y_split
+
+        return sorted(y_split, reverse=True)
 
     def get_table_x(self, page, y_range=[]):
         """
@@ -196,7 +213,7 @@ class BaseExtractTable(object):
                         x_split.remove(pop_item)
                         x_split.add(max(item[0], pop_item))
                     
-        else: 
+        else:
             for item in standar_line:
                 if y_range and (y_range[-1]>item['y0'] or item['y0']>y_range[0]):
                     continue

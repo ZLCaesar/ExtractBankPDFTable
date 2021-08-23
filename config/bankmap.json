@@ -3,5 +3,16 @@
     "宁波银行": "NINGBO", "宁波": "NINGBO", "NINGBO": "NINGBO", "502039388": "NINGBO",
     "南京银行": "NANJING", "南京": "NANJING", "NANJING": "NANJING", "502038360": "NANJING",
     "江苏银行": "JIANGSU", "江苏": "JIANGSU", "JIANGSU": "JIANGSU", "3IPB05761F": "JIANGSU",
-    "平安银行": "PINGAN", "平安": "PINGAN", "PINGAN": "PINGAN", "1000001": "PINGAN"
+    "平安银行": "PINGAN", "平安": "PINGAN", "PINGAN": "PINGAN", "1000001": "PINGAN",
+    "中信银行": "ZHONGXIN", "中信": "ZHONGXIN", "ZHONGXIN": "ZHONGXIN", "502037343": "ZHONGXIN",
+    "浦发银行": "PUFA", "浦发": "PUFA", "PUFA": "PUFA", "1600000": "PUFA",
+    "光大银行": "GUANGDA", "光大": "GUANGDA", "GUANGDA": "GUANGDA", "2024269": "GUANGDA",
+    "华夏银行": "HUAXIA", "华夏": "HUAXIA", "HUAXIA": "HUAXIA", "08M399B152": "HUAXIA",
+    "民生银行": "MINSHENG", "民生": "MINSHENG", "MINSHENG": "MINSHENG", "1600016": "MINSHENG",
+    "兴业银行": "XINGYE", "兴业": "XINGYE", "XINGYE": "XINGYE", "2013708": "XINGYE",
+    "上海银行": "SHANGHAI", "上海": "SHANGHAI", "SHANGHAI": "SHANGHAI", "502038032": "SHANGHAI",
+    "浙商银行": "ZHESHANG", "浙商": "ZHESHANG", "ZHESHANG": "ZHESHANG", "04D6AF5912": "ZHESHANG",
+    "北京银行": "BEIJING", "北京": "BEIJING", "BEIJING": "BEIJING", "502039149": "BEIJING",
+    "工商银行": "GONGSHANG", "工商": "GONGSHANG", "GONGSHANG": "GONGSHANG", "2002176": "GONGSHANG",
+    "建设银行": "JIANSHE", "建设": "JIANSHE", "JIANSHE": "JIANSHE", "2002175": "JIANSHE"
 }

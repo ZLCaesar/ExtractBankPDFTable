@@ -1,4 +1,5 @@
 from re import U
+from typing import Counter
 import numpy as np
 import pandas as pd
 
@@ -28,7 +29,7 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
         self.DOWN_DEVIATION_TOLERANCE = args['down_deviation_tolerance']
         self.MULTI_CELL_TOLERANCE_RATE = args['multi_cell_tolerance_rate']
         
-        self.deal_bound = DealBoundary(args['under_this'], args['start_from_this'], args['above_this'], args['bound_flag_dis_tolerance'])
+        self.deal_bound = DealBoundary(args)
 
     def fill_content_into_cell(self, xs, ys, words_list):
         """
@@ -46,7 +47,6 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
         ret_unit = 1
         words_id = -1
         data = [[None for i in range(len(xs)-1)] for j in range(len(ys)-1)]
-
         for words in words_list:
             words_id += 1
             x_begin = -1
@@ -63,14 +63,14 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
                 unit_feat, unit = self.unit_rec.extract_unit(words['text'])
                 # print(unit_feat, unit)
             for i in range(len(xs)):
-                if x0>xs[i]:
+                if x0+self.args.get('text_cell_tolerance', 0)>xs[i]:
                     x_begin = i
                 if x1>xs[i]:
                     x_end = i+1
             if x_end - x_begin > 1 and x_begin+1<len(xs):
                 cell_lenth = float(xs[x_begin+1]-xs[x_begin])
                 dis = float(xs[x_begin+1])-float(x0)
-                if dis/cell_lenth<self.MULTI_CELL_TOLERANCE_RATE:
+                if dis/max(1,cell_lenth)<self.MULTI_CELL_TOLERANCE_RATE:
                     x_begin += 1
 
             for j in range(len(ys)):
@@ -95,7 +95,7 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
             
         return pd.DataFrame(data), ret_unit
 
-    def get_table_by_page(self, page, words_list=None):
+    def get_table_by_page(self, page, words_list=None, drop_first_line=False):
         """根据page对象获取表格。
         由于pdfplumber对部分年报（例如招商银行2020半年报）的文字无法抽取，需要借助pymupdf。因此如果传入的
         words_list为空，则说明是来自于pdfplumber，如果不为空，则说明来自与pymupdf
@@ -113,27 +113,50 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
         if not words_list:
             words_list = self.get_page_words(page)
         y_split = self.get_table_y(page)
+        if drop_first_line and y_split:
+            y_split.pop(0)
         upbound, bottombound = self.deal_bound.get_bound_by_flag(words_list)
         table_boundary = self.deal_bound.get_table_boundary(y_split, upbound, bottombound)
-    
+        add_table_boundary = {}
         for table_id in table_boundary:
             memory = {}
+            add_arr = []
             temp = table_boundary.get(table_id)
             for i in range(len(temp)-1):
                 if float(temp[i])-float(temp[i+1])>self.MORE_THAN_ONE_CELL_HEIGHT:  #如果距离超过阈值，则认为可能存在多行，进入findproperrows函数进行拆分
-                    memory[i] = self.deal_bound.find_proper_rows(temp[i], temp[i+1], words_list)
-                    
+                    add_line, memory[i] = self.deal_bound.find_proper_rows(temp[i], temp[i+1], words_list)
+                    add_arr.append(add_line)
+
             memory = sorted(memory.items(), key=lambda x:x[0], reverse=True)
             while memory:
                 i,item = memory.pop(0)
 
                 temp = temp[:i+1]+item+temp[i+1:]
-            table_boundary[table_id] = temp
+            
+            if add_arr:
+                counter = 0
+                for item in add_arr:
+                    for i in range(len(temp)):
+                        if temp[i]<item:
+                            add_table_boundary[table_id+counter/10] = temp[:i]+[item]
+                            counter+=1
+                            temp = temp[i:]
+                            break
+                if temp:
+                    add_table_boundary[table_id+counter/10] = temp
+            else:
+                table_boundary[table_id] = temp
+        table_boundary.update(add_table_boundary)
+        
         for table_id in table_boundary:
             boundary = table_boundary[table_id]
             x_range = self.get_table_x(page, boundary)
             ys = boundary
-            xs = sorted(x_range)
+            try:
+                xs = sorted(x_range)
+            except:
+                xs = []
+                print(x_range)
             # ys = [ys[0]+self.CELL_HEIGHT]+ys
             ys[-1] = ys[-1]-2
             cell_dict, unit = self.fill_content_into_cell(xs, ys, words_list)

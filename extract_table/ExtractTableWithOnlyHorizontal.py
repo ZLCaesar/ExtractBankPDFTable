@@ -12,7 +12,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
         self.MIN_TABLE_HEIGHT = 30
         self.PRUNE_FLAG = args.get('prune_flag')
         self.STRENGTHEN_START_FROM_THIS = args.get('strengthen_start_from_this')
-        self.deal_bound = DealBoundary(args['under_this'], args['start_from_this'], args['above_this'], args['bound_flag_dis_tolerance'])
+        self.deal_bound = DealBoundary(args)
 
     def get_words_line(self, word_list, up, down):
         """根据给定的上下边界，找到可能的表格范围内的数据
@@ -44,7 +44,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                 else:
                     exist = False
                     for bottom_ in words_line:
-                        if abs(bottom-bottom_)<5:
+                        if abs(bottom-bottom_)<6:
                             temp = words_line[bottom_]
                             temp.append([words['text'], words['x0'], words['x1']])
                             words_line[bottom_] = temp
@@ -140,7 +140,6 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                             column_side[j][0]=line[1][j][1]
                         if column_side[j][1]<line[1][j][2]:
                             column_side[j][1]=line[1][j][2]
-
         while temp_words:
             words = temp_words.pop(0)
             left_scan = False
@@ -154,9 +153,9 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
             for i in range(1, len(column_side)):
                 col_left = column_side[i][0]
                 col_right = column_side[i][1]
-                if col_left>words_right:
+                if col_left>=words_right:
                     column_side[i-1][1] = max(column_side[i-1][1], words_right)
-                if col_left>words_left>column_side[i-1][1]:
+                if words_right>=col_left>=words_left>=column_side[i-1][1]:
                     column_side[i][0] = words_left
 
                 # right = column_side[i][1]
@@ -182,6 +181,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                     else:
                         merge_cols.append([i, col_id, ls, line[1][0]])
             column_num -= 1
+
         return column_side, merge_cols
 
     def get_no_line_table(self, column_side, words_line):
@@ -248,12 +248,12 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
         def find_flag():
             flag = -1
             for i, row in table.iterrows():
-                if i >3:
+                if i >4:
                     break
                 for j in range(len(row)):
                     if row[j] is not None:
                         for item in self.PRUNE_FLAG:
-                            if item in row[j]:
+                            if item in row[j] and len(row[j])<10:
                                 flag = i
                                 return flag
             return flag
@@ -264,7 +264,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
             table = table.reset_index(drop=True)
         return table
 
-    def get_table_by_page(self, page, words_list=None):
+    def get_table_by_page(self, page, words_list=None, replace_short_line=False):
         """根据page对象获取表格。
         由于pdfplumber对部分年报（例如招商银行2020半年报）的文字无法抽取，需要借助pymupdf。因此如果传入的
         words_list为空，则说明是来自于pdfplumber，如果不为空，则说明来自与pymupdf
@@ -289,10 +289,29 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
             upbound, bottombound = self.deal_bound.get_bound_by_flag(words_list)
         table_boundary = self.deal_bound.get_table_boundary(y_split, upbound, bottombound)
         table_boundary = self.__deal_boundary(table_boundary, words_list[-2]['bottom'])
-
+        if replace_short_line:
+            drop_arr = []
+            for i in range(len(words_list)):
+                text_ = words_list[i]['text']
+                if text_.startswith('(') or text_.startswith('（') or text_.endswith(')') or text_.endswith('）'):
+                    text = words_list[i]['text'].replace('(','').replace('（','').replace(')','').replace('）','')
+                    if text == '':
+                        drop_arr.append(i)
+                    words_list[i]['text'] = text
+                    words_list[i]['x0'] = words_list[i]['x1']-1
+                if '_' in text_ or '---' in text_:
+                    text = words_list[i]['text'].replace('_','').replace('-','')
+                    if text == '':
+                        drop_arr.append(i)
+                    words_list[i]['text'] = text
+                    words_list[i]['x0'] = words_list[i]['x1']-1
+            for item in reversed(drop_arr):
+                words_list.pop(item)
         for table_id in table_boundary:
             boundary = table_boundary[table_id]
             up, down = float(boundary[0]), float(boundary[-1])
+            if len(table_boundary)==1:
+                 down = min(down, self.args.get('add_default_bottom', down))
             top_line_y = max(top_line_y, up)
             bottom_line_y = min(bottom_line_y, down)
             if abs(up-down)<self.MIN_TABLE_HEIGHT:
