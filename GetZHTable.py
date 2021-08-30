@@ -15,6 +15,7 @@ class ExtractIndex:
     def __init__(self, pdf_file_path, index_list=[], bank_name=None):
         func_map = {
             "ZHAOSHANG": self.extarct_zs_table,
+            "JIAOTONG": self.extarct_nb_table,
             "NINGBO": self.extarct_nb_table,
             "NANJING": self.extarct_nb_table,
             "JIANGSU": self.extarct_js_table,
@@ -28,7 +29,10 @@ class ExtractIndex:
             "SHANGHAI": self.extarct_js_table,
             "ZHESHANG": self.extarct_js_table,
             "BEIJING": self.extarct_js_table,
-            "GONGSHANG": self.extarct_nb_table
+            "GONGSHANG": self.extarct_nb_table,
+            "YOUCHU": self.extarct_js_table,
+            "JIANSHE": self.extarct_nb_table,
+            "ZHONGHANG": self.extarct_js_table
         }
         self.index_list = index_list
         self.ret = extract_file_name(pdf_file_path)
@@ -67,6 +71,10 @@ class ExtractIndex:
                 # 上下两个表的列数不一样，但是有可能是因为前一个表有合并单元格的情况
                 if len(curr_table['data'])==1 and tables[i+1]['unit']==1:
                     tables[i+1]['unit'] = tables[i]['unit']
+
+            if self.args.get('get_unit_from_last_table', False) and next_table.get('unit_feat') is None and curr_table.get('unit_feat') is not None:
+                tables[i+1]['unit'] = tables[i]['unit']
+                tables[i+1]['unit_feat'] = tables[i].get('unit_feat', None)
         return tables
 
     # def valid_no_vertical_feat(self, no_vertical_feat, words_list):
@@ -88,9 +96,10 @@ class ExtractIndex:
         
         bank_name = no_vertical_feat[0]
         pattern = no_vertical_feat[1]
-
+        if not words_list:
+            return False
         if bank_name in words_list[0]['text']:
-            for i in range(1, min(len(words_list),20)):
+            for i in range(1, min(len(words_list),self.args.get('no_vertical_max_nbline', 20))):
                 if re.findall(pattern, words_list[i]['text']):
                     return True
 
@@ -110,6 +119,38 @@ class ExtractIndex:
                 # covert_text_num
         index_dict = {item: self.ur.covert_text_num(index_dict.get(item)) for item in index_dict}
         return index_dict
+
+    def extarct_jt_table(self):
+        etwon = ExtractTableWithOnlyHorizontal(self.args)
+
+        ret_tables = []
+        text_list = []
+        top_line = 0
+        bottom_line = 10000
+        no_vertical_page = len(self.pdf.pages)
+        for pid in tqdm(range(len(self.pdf.pages))):
+            if self.use_fitz:
+                page_mu = self.pdf_mu.loadPage(pid)
+            else:
+                page_mu = None
+            page = self.pdf.pages[pid]
+            words_list = etwon.get_page_words(page, page_mu)
+            content = ''.join([item['text'] for item in words_list])
+            text_list.append(content.replace(" ",""))
+            tables, top_line_y, bottom_line_y = etwon.get_table_by_page(page, words_list)
+            top_line = max(top_line, top_line_y)
+            bottom_line = min(bottom_line, bottom_line_y)
+            tables = [{'data': etwon.drop_duplicate_cols(t['data']), 'unit':t['unit'], 'top': t['top'], 'bottom': t['bottom'], 'page':pid} for t in tables]
+            
+            ret_tables += tables
+        index_list = self.index_list[:]
+        index_dict = self.extract_index_from_text(index_list, text_list)
+        print('top_line:', top_line)
+        print('bottom_line:', bottom_line)
+        ret_tables = self.__combine_table(ret_tables, top_line, bottom_line)
+        self.ret['table'] = ret_tables
+        self.ret['textQuota'] = index_dict
+        return self.ret
 
     def extarct_zs_table(self):
         etwnv = ExtractTableWithVerticalPoint(self.args)
@@ -218,11 +259,12 @@ class ExtractIndex:
                 tables, top_line_y, bottom_line_y = etwfl.get_table_by_page(page, words_list)
                 if last_page_unit and tables and tables[0]['unit'] == 1:
                     tables[0]['unit'] = last_page_unit
+                top_line = max(top_line, top_line_y)
+                bottom_line = min(bottom_line, bottom_line_y)
             else:
-                tables, top_line_y, bottom_line_y = etwon.get_table_by_page(page, words_list, self.args.get('replace_short_line', False))
+                tables, _, _ = etwon.get_table_by_page(page, words_list, self.args.get('replace_short_line', False))
             
-            top_line = max(top_line, top_line_y)
-            bottom_line = min(bottom_line, bottom_line_y)
+            
             tables = [{'data': etwfl.drop_duplicate_cols(t['data']), 'unit':t['unit'], 'top': t['top'], 'bottom': t['bottom'], 'page':pid} for t in tables]
             last_page_unit = self.__detect_lastline_unit(words_list)
             ret_tables += tables

@@ -141,10 +141,18 @@ class BaseExtractTable(object):
             words_list[i]['bottom'] = float(page.height) - float(words_list[i]['bottom'])
             words_list[i]['x0'] = float(words_list[i]['x0'] + 1)
             words_list[i]['x1'] = float(words_list[i]['x1'] - 1)
+            
+
             if self.args.get('zhcn_convert', False):
                 words_list[i]['text'] = convert(words_list[i]['text'], 'zh-cn')
         words_list = sorted(words_list, key=lambda x:x['top'], reverse=True)
-        
+        if self.args.get('drop_first_word', False) and words_list:
+            words_list.pop(0)
+        if self.args.get('drop_last_word', False) and words_list:
+            for _ in range(self.args.get('drop_last_word')):
+                if not words_list:
+                    break
+                words_list.pop(-1)
         return words_list
     
     def get_table_y(self, page):
@@ -152,7 +160,7 @@ class BaseExtractTable(object):
         获取每一行所在的纵坐标
         """
         y_split = set()
-        if page.curves:
+        if self.args['curves_first'] and page.curves:
             for i in range(len(page.curves)):
                 for item in page.curves[i]['pts']:
                     if not y_split:

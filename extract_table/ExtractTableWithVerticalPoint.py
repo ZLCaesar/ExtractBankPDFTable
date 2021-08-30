@@ -113,6 +113,7 @@ class ExtractTableWithVerticalPoint(BaseExtractTable):
         if not words_list:
             words_list = self.get_page_words(page)
         y_split = self.get_table_y(page)
+        # print(y_split)
         if drop_first_line and y_split:
             y_split.pop(0)
         upbound, bottombound = self.deal_bound.get_bound_by_flag(words_list)

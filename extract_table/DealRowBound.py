@@ -21,6 +21,7 @@ class DealBoundary:
         self.strict_pattern_len = args.get('strict_pattern_len', -1)
         self.BOUND_FLAG_DIS_TOLERANCE = args['bound_flag_dis_tolerance']
         self.MAX_LEN_FLAG = args['max_len_flag']
+
     def get_bound_by_flag(self, words_list, y_split=[]):
         y_split = sorted(y_split, reverse=True)
         def strengthen_valid(bottom):
@@ -47,14 +48,16 @@ class DealBoundary:
 
         for word in words_list:
             text = word['text']
-            if len(set(text))>self.MAX_LEN_FLAG:
-                continue
+            # if len(set(text))>self.MAX_LEN_FLAG:
+            #     continue
             top = word['top']
             bottom = word['bottom']
             find1, find2 = False, False
             
             for pattern in self.UNDER_THIS:
                 if re.findall(pattern, text):
+                    if len(text)-len(pattern)>self.MAX_LEN_FLAG/2:
+                        continue
                     upbound.append(bottom-self.BOUND_FLAG_DIS_TOLERANCE)
                     find1 = True
                     break
@@ -66,6 +69,8 @@ class DealBoundary:
                     # print(text)
                     break
                 if re.findall(pattern, text):
+                    if len(text)-len(pattern)>self.MAX_LEN_FLAG/2:
+                        continue
                     if strengthen_valid(bottom):
                         upbound.append(top+self.BOUND_FLAG_DIS_TOLERANCE)
                     else:
@@ -77,6 +82,8 @@ class DealBoundary:
                 
             for pattern in self.ABOVE_THIS:
                 if re.findall(pattern, text):
+                    if len(text)-len(pattern)>self.MAX_LEN_FLAG/2:
+                        continue
                     bottombound.append(top)
                     # find3 = True
                     break
@@ -115,7 +122,7 @@ class DealBoundary:
         table_boundary = {}
         if len(y_split)<2:
             return {}
-        y = [[item, None] for item in y_split]
+        y = [[max(item, 0), None] for item in y_split]
         flags = [[item, 'UP'] for item in upbound]
         # if not upbound:
         flags += [[item, 'DOWN'] for item in bottombound]  

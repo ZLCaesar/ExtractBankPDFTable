@@ -1,3 +1,4 @@
+from collections import defaultdict
 import re
 import pandas as pd
 
@@ -52,7 +53,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                     if not exist:
                         words_line[bottom] = [[words['text'], words['x0'], words['x1']]]
         words_line = {y: sorted(value, key=lambda x: x[1]) for y, value in words_line.items()}
-        return words_line, unit
+        return words_line, unit_feat, unit
 
     def judge(self, columns, x1, x2):
         """给定一个初始的列边界范围columns，然后根据给定的x1,x2不断修正边界
@@ -275,6 +276,11 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                     "unit": 该表格对应的单位
                     "page": 该表所在页
         """
+        default_unit = 0
+        if self.args.get('default_unit', None) is not None:
+            _, default_unit = self.args.get('default_unit', None)
+            default_unit = int(default_unit)
+
         table_list = []
         top_line_y = 0
         bottom_line_y = 100000
@@ -307,6 +313,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                     words_list[i]['x0'] = words_list[i]['x1']-1
             for item in reversed(drop_arr):
                 words_list.pop(item)
+
         for table_id in table_boundary:
             boundary = table_boundary[table_id]
             up, down = float(boundary[0]), float(boundary[-1])
@@ -316,13 +323,16 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
             bottom_line_y = min(bottom_line_y, down)
             if abs(up-down)<self.MIN_TABLE_HEIGHT:
                 continue
-            words_line, unit = self.get_words_line(words_list, up, down)
+            words_line, unit_feat, unit = self.get_words_line(words_list, up, down)
             if not self.__valid_table(words_line):
                 continue
             column_side, merge_cols = self.split_cells(words_line)
             table = self.get_no_line_table(column_side, words_line)
             if self.PRUNE_FLAG:
                 table = self.__prune_table(table)
+            if unit_feat is None:
+                if default_unit:
+                    unit = default_unit
             table_list.append({'data': table, 'unit': unit, 'top': up, 'bottom': down})
         return table_list, top_line_y, bottom_line_y
         # return table_list

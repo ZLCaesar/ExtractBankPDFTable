@@ -19,8 +19,8 @@ class ExtractTableWithFullLine(BaseExtractTable):
         if tables:
             for table in tables:
                 table = pd.DataFrame(table)
-                table, unit, table_top, table_bottom = self.clean_table(table, words_list, bottom_flag)
-                table_list.append({'data': table, 'unit': unit, 'top': table_top, 'bottom': table_bottom})
+                table, unit_feat, unit, table_top, table_bottom = self.clean_table(table, words_list, bottom_flag)
+                table_list.append({'data': table, 'unit_feat': unit_feat, 'unit': unit, 'top': table_top, 'bottom': table_bottom})
                 top_line = max(top_line, table_top)
                 bottom_line = min(bottom_line, table_bottom)
                 table_list = sorted(table_list, key=lambda x:x['top'], reverse=True)
@@ -73,6 +73,7 @@ class ExtractTableWithFullLine(BaseExtractTable):
         # print(first_row)
         unit_line = []
         unit = 1
+        unit_feat = None
         head = []            #可能的表格真第一行
         flag_head = False    #找到真第一行的标记
         flag_first = False   #words_list遍历的时候，第一次进入了first_row的标记
@@ -118,7 +119,7 @@ class ExtractTableWithFullLine(BaseExtractTable):
 
         for text, position in unit_line:
             if position>table_top and position-table_top<15:
-                _, unit = self.unit_rec.extract_unit(text)
+                unit_feat, unit = self.unit_rec.extract_unit(text)
                 break
        
-        return table, unit, table_top, table_bottom
+        return table, unit_feat, unit, table_top, table_bottom
