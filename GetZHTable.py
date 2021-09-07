@@ -110,9 +110,13 @@ class ExtractIndex:
         pattern = no_vertical_feat[1]
         if not words_list:
             return False
+        if self.args.get('no_vertical_feat2_maxlen', None):
+            if len(words_list)>self.args.get('no_vertical_feat2_maxlen'):
+                return False
         if bank_name in words_list[0]['text']:
             for i in range(1, min(len(words_list),self.args.get('no_vertical_max_nbline', 20))):
-                if re.findall(pattern, words_list[i]['text']):
+                info = re.findall(pattern, words_list[i]['text'])
+                if info:
                     return True
 
         return False

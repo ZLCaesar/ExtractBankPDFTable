@@ -256,8 +256,7 @@ class BaseExtractTable(object):
                     if pop_x1_item in x_split:
                         x_split.remove(pop_x1_item)
                         x_split.add(max(item['x1'], pop_x1_item))
-
-            return x_split
+        return x_split
 
     def get_table_by_page(self):
         raise NotImplementedError
