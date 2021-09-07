@@ -107,6 +107,7 @@ class ExtractTableWithFullLine(BaseExtractTable):
         table_bottom = 10000
         for _, value in first_row.items():
             table_top = max(table_top, value['top'])
+        
         if flag_head: #找到了真第一行之后，需要取代top同时将其拼接到原表之前。
             for item in head:
                 table_top2 = max(table_top2, item[1])
@@ -121,5 +122,4 @@ class ExtractTableWithFullLine(BaseExtractTable):
             if position>table_top and position-table_top<15:
                 unit_feat, unit = self.unit_rec.extract_unit(text)
                 break
-       
         return table, unit_feat, unit, table_top, table_bottom

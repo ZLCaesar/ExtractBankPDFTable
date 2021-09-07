@@ -11,28 +11,40 @@ from package.toolkit.ExtractIndexFromContent import extract_index_from_content, 
 from package.toolkit import UnitRec
 from package.config.Configure import get_config
 
+
 class ExtractIndex:
     def __init__(self, pdf_file_path, index_list=[], bank_name=None):
+        """
+        extarct_table_type1 :表格类型——完整表格+只有上下横线
+        extarct_table_type2 :表格类型——缺少垂直线+只有上下横线
+        extarct_table_type3 :表格类型——只有上下横线
+        extarct_table_type4 :表格类型——缺少垂直线
+        extarct_table_type5 :专门特殊处理中信银行
+        extarct_table_type6 :专门特殊处理华夏银行
+        """
+        
         func_map = {
-            "ZHAOSHANG": self.extarct_zs_table,
-            "JIAOTONG": self.extarct_nb_table,
-            "NINGBO": self.extarct_nb_table,
-            "NANJING": self.extarct_nb_table,
-            "JIANGSU": self.extarct_js_table,
-            "PINGAN": self.extarct_js_table,
-            "ZHONGXIN": self.extarct_zx_table,
-            "PUFA": self.extarct_nb_table,
-            "GUANGDA": self.extarct_js_table,
-            "HUAXIA": self.extarct_hx_table,
-            "MINSHENG": self.extarct_js_table,
-            "XINGYE": self.extarct_js_table,
-            "SHANGHAI": self.extarct_js_table,
-            "ZHESHANG": self.extarct_js_table,
-            "BEIJING": self.extarct_js_table,
-            "GONGSHANG": self.extarct_nb_table,
-            "YOUCHU": self.extarct_js_table,
-            "JIANSHE": self.extarct_nb_table,
-            "ZHONGHANG": self.extarct_js_table
+            "ZHAOSHANG": self.extarct_table_type4,
+            "JIAOTONG": self.extarct_table_type3,
+            "NINGBO": self.extarct_table_type2,
+            "NANJING": self.extarct_table_type2,
+            "JIANGSU": self.extarct_table_type1,
+            "PINGAN": self.extarct_table_type1,
+            "ZHONGXIN": self.extarct_table_type5,
+            "PUFA": self.extarct_table_type2,
+            "GUANGDA": self.extarct_table_type1,
+            "HUAXIA": self.extarct_table_type6,
+            "MINSHENG": self.extarct_table_type1,
+            "XINGYE": self.extarct_table_type1,
+            "SHANGHAI": self.extarct_table_type1,
+            "ZHESHANG": self.extarct_table_type1,
+            "BEIJING": self.extarct_table_type1,
+            "GONGSHANG": self.extarct_table_type2,
+            "YOUCHU": self.extarct_table_type1,
+            "JIANSHE": self.extarct_table_type2,
+            "ZHONGHANG": self.extarct_table_type1,
+            "NONGHANG": self.extarct_table_type3,
+            "XIAMEN": self.extarct_table_type1
         }
         self.index_list = index_list
         self.ret = extract_file_name(pdf_file_path)
@@ -152,7 +164,39 @@ class ExtractIndex:
         self.ret['textQuota'] = index_dict
         return self.ret
 
-    def extarct_zs_table(self):
+    def extarct_table_type3(self):
+        etwon = ExtractTableWithOnlyHorizontal(self.args)
+
+        ret_tables = []
+        text_list = []
+        top_line = 0
+        bottom_line = 10000
+        no_vertical_page = len(self.pdf.pages)
+        for pid in tqdm(range(len(self.pdf.pages))):
+            if self.use_fitz:
+                page_mu = self.pdf_mu.loadPage(pid)
+            else:
+                page_mu = None
+            page = self.pdf.pages[pid]
+            words_list = etwon.get_page_words(page, page_mu)
+            content = ''.join([item['text'] for item in words_list])
+            text_list.append(content.replace(" ",""))
+            tables, top_line_y, bottom_line_y = etwon.get_table_by_page(page, words_list)
+            top_line = max(top_line, top_line_y)
+            bottom_line = min(bottom_line, bottom_line_y)
+            tables = [{'data': etwon.drop_duplicate_cols(t['data']), 'unit':t['unit'], 'top': t['top'], 'bottom': t['bottom'], 'page':pid} for t in tables]
+            
+            ret_tables += tables
+        index_list = self.index_list[:]
+        index_dict = self.extract_index_from_text(index_list, text_list)
+        print('top_line:', top_line)
+        print('bottom_line:', bottom_line)
+        ret_tables = self.__combine_table(ret_tables, top_line, bottom_line)
+        self.ret['table'] = ret_tables
+        self.ret['textQuota'] = index_dict
+        return self.ret
+
+    def extarct_table_type4(self):
         etwnv = ExtractTableWithVerticalPoint(self.args)
         
         ret_tables = []
@@ -182,7 +226,7 @@ class ExtractIndex:
         self.ret['textQuota'] = index_dict
         return self.ret
 
-    def extarct_nb_table(self):
+    def extarct_table_type2(self):
         etwnv = ExtractTableWithVerticalPoint(self.args)
         etwon = ExtractTableWithOnlyHorizontal(self.args)
 
@@ -233,7 +277,7 @@ class ExtractIndex:
 
         return None
 
-    def extarct_js_table(self):
+    def extarct_table_type1(self):
         etwfl = ExtractTableWithFullLine(self.args)
         etwon = ExtractTableWithOnlyHorizontal(self.args)
 
@@ -278,7 +322,7 @@ class ExtractIndex:
         self.ret['textQuota'] = index_dict
         return self.ret
 
-    def extarct_zx_table(self):
+    def extarct_table_type5(self):
         def split_row(table):
             # 因为有些有“-”的行，傻逼pdfplumber合并到上一行去了,
             # 只对第一列有此种情况的表进行处理
@@ -337,7 +381,7 @@ class ExtractIndex:
         self.ret['textQuota'] = index_dict
         return self.ret
 
-    def extarct_hx_table(self):
+    def extarct_table_type6(self):
         etwfl = ExtractTableWithFullLine(self.args)
         etwon = ExtractTableWithOnlyHorizontal(self.args)
 

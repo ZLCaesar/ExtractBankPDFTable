@@ -21,7 +21,7 @@ class DealBoundary:
         self.strict_pattern_len = args.get('strict_pattern_len', -1)
         self.BOUND_FLAG_DIS_TOLERANCE = args['bound_flag_dis_tolerance']
         self.MAX_LEN_FLAG = args['max_len_flag']
-
+        
     def get_bound_by_flag(self, words_list, y_split=[]):
         y_split = sorted(y_split, reverse=True)
         def strengthen_valid(bottom):
@@ -82,12 +82,10 @@ class DealBoundary:
                 
             for pattern in self.ABOVE_THIS:
                 if re.findall(pattern, text):
-                    if len(text)-len(pattern)>self.MAX_LEN_FLAG/2:
-                        continue
-                    bottombound.append(top)
-                    # find3 = True
-                    break
-        
+                    if len(text)-len(pattern)<self.MAX_LEN_FLAG/2 or text.startswith(re.findall(pattern, text)[0]):
+                        bottombound.append(top)
+                        # find3 = True
+                        break
         return find_proper_line(upbound), find_proper_line(bottombound)
 
 
@@ -167,7 +165,6 @@ class DealBoundary:
         
         if temp:
             table_boundary[table_id] = temp
-        # print(table_boundary)
         table_boundary = {k:[_v[0] for _v in v] for k, v in table_boundary.items()}
         return table_boundary
 

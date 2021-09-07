@@ -14,8 +14,10 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
         self.PRUNE_FLAG = args.get('prune_flag')
         self.STRENGTHEN_START_FROM_THIS = args.get('strengthen_start_from_this')
         self.deal_bound = DealBoundary(args)
-
-    def get_words_line(self, word_list, up, down):
+        self.words_bottom_table_up_dis = args.get('words_bottom_table_up_dis', 3)
+        self.oneline_thred = args.get('oneline_thred', 6)
+        self.unit_position_range = args.get('unit_position_range', 10000)
+    def get_words_line(self, word_list, up, down, nb_table):
         """根据给定的上下边界，找到可能的表格范围内的数据
 
         Args:
@@ -32,10 +34,10 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
         for words in word_list:
             y = words['top']
             bottom = words['bottom']
-            if not unit_feat:
+            if not unit_feat and (bottom-up<self.unit_position_range or nb_table==0):
                 unit_feat, unit = self.unit_rec.extract_unit(words['text'])
             
-            if bottom-up>3 or y<down:
+            if bottom-up>self.words_bottom_table_up_dis or y<down:
                 continue
             else:
                 if bottom in words_line:
@@ -45,7 +47,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
                 else:
                     exist = False
                     for bottom_ in words_line:
-                        if abs(bottom-bottom_)<6:
+                        if abs(bottom-bottom_)<self.oneline_thred: #6
                             temp = words_line[bottom_]
                             temp.append([words['text'], words['x0'], words['x1']])
                             words_line[bottom_] = temp
@@ -323,7 +325,7 @@ class ExtractTableWithOnlyHorizontal(BaseExtractTable):
             bottom_line_y = min(bottom_line_y, down)
             if abs(up-down)<self.MIN_TABLE_HEIGHT:
                 continue
-            words_line, unit_feat, unit = self.get_words_line(words_list, up, down)
+            words_line, unit_feat, unit = self.get_words_line(words_list, up, down, len(table_list))
             if not self.__valid_table(words_line):
                 continue
             column_side, merge_cols = self.split_cells(words_line)
